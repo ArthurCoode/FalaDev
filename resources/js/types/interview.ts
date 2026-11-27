@@ -24,4 +24,27 @@ export type InterviewSessionSummary = {
 export type UsageSummary = {
     used: number;
     limit: number;
+    remaining: number;
+};
+
+export type InterviewOption = {
+    value: string | number;
+    label: string;
+    description?: string;
+};
+
+export type InterviewSetupOptions = {
+    categories: InterviewOption[];
+    levels: InterviewOption[];
+    durations: InterviewOption[];
+};
+
+export type InterviewSetupDraft = {
+    category: string;
+    level: string;
+    duration_minutes: number;
+};
+
+export type InterviewSessionDetails = InterviewSessionSummary & {
+    canEditSetup: boolean;
 };

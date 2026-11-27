@@ -19,4 +19,16 @@ enum InterviewCategory: string
             self::Behavioral => 'Comportamental',
         };
     }
+
+    /**
+     * Short explanation shown on the interview setup screen.
+     */
+    public function description(): string
+    {
+        return match ($this) {
+            self::Algorithms => 'Resolver um problema explicando a abordagem, os casos de borda e a complexidade.',
+            self::SystemDesign => 'Desenhar um sistema discutindo requisitos, componentes, armazenamento e trade-offs.',
+            self::Behavioral => 'Contar situações reais de trabalho: conflitos, falhas, colaboração e impacto.',
+        };
+    }
 }

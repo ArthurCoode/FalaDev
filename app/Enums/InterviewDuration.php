@@ -20,4 +20,15 @@ enum InterviewDuration: int
             self::Long => '30 minutos',
         };
     }
+
+    /**
+     * Short explanation shown on the interview setup screen.
+     */
+    public function description(): string
+    {
+        return match ($this) {
+            self::Short => 'Sessão curta, boa para praticar com frequência.',
+            self::Long => 'Sessão completa, mais próxima de uma entrevista real.',
+        };
+    }
 }
