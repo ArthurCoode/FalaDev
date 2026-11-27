@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * @property int $id
@@ -82,6 +83,32 @@ class InterviewSession extends Model
     public function isOpenForSetup(): bool
     {
         return in_array($this->status, [InterviewStatus::Draft, InterviewStatus::Ready], true);
+    }
+
+    /**
+     * What lists and pages show about a session (labels in pt-BR).
+     *
+     * @return array{id: int, category: string, level: string, duration: string, status: string, statusLabel: string, createdAt: string|null}
+     */
+    public function summary(): array
+    {
+        return [
+            'id' => $this->id,
+            'category' => $this->category->label(),
+            'level' => $this->level->label(),
+            'duration' => $this->duration_minutes->label(),
+            'status' => $this->status->value,
+            'statusLabel' => $this->status->label(),
+            'createdAt' => $this->created_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return HasOne<Evaluation, $this>
+     */
+    public function evaluation(): HasOne
+    {
+        return $this->hasOne(Evaluation::class);
     }
 
     /**
