@@ -45,6 +45,16 @@ Para a segunda opção, crie o banco uma vez:
 - `app/Http/Controllers/DashboardController`: tela inicial com as 5 entrevistas mais recentes e o uso do mês.
 - `app/Http/Controllers/InterviewSessionController`: configuração da entrevista (`/interviews/create`) e resumo da sessão (`/interviews/{id}`). Cada usuário tem no máximo um rascunho aberto: salvar de novo atualiza o mesmo rascunho. Sessões de outros usuários respondem 404.
 - `app/Services/InterviewUsage`: limite mensal. Só contam entrevistas **iniciadas** (`started_at`); rascunhos não consomem o limite.
+- **Estados da sessão:** `InterviewStatus::canTransitionTo()` define as transições permitidas e `InterviewSession::transitionTo()` é o único jeito de mudar o status. Por enquanto: `draft → ready` (testes de áudio concluídos) e `ready → draft` (configuração alterada).
+
+## Voz (TTS/STT)
+
+Os provedores ficam atrás de interfaces em `app/Speech`, escolhidas em `config/faladev.php`:
+
+- `TextToSpeech` (`FALADEV_TTS_DRIVER`). Hoje só existe o driver `fake`, que devolve um sinal sonoro em WAV, não a frase falada. Serve para desenvolver o fluxo sem conta em provedor; a tela avisa quando ele está ativo.
+- STT (fala para texto) ainda não existe; entra com a gravação das respostas.
+
+O teste de microfone roda só no navegador (`resources/js/composables/useAudioRecorder.ts`): pede permissão no clique, mostra o volume ao vivo, grava localmente e libera o microfone ao terminar. Nada é enviado ao servidor.
 
 ## Padrões de interface
 
@@ -52,6 +62,8 @@ Telas novas usam os componentes do FalaDev em vez de montar a estrutura à mão:
 
 - `PageHeader`: título (`h1`), descrição e ações da página.
 - `OptionCardGroup`: escolha única em cartões, com `input radio` nativo (funciona com o `<Form>` do Inertia e com teclado).
+- `interview/MicrophoneCheck` e `interview/SampleAudioCheck`: testes de áudio antes da entrevista.
+- `useAudioRecorder`: gravação com permissão, nível de entrada, parar/cancelar e reprodução local; será reaproveitado na gravação das respostas.
 
 As cores vêm sempre dos tokens de `resources/css/app.css` (`bg-primary`, `text-muted-foreground`, `bg-voice`...), nunca de valores fixos.
 
