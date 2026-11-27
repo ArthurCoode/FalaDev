@@ -9,8 +9,12 @@ use App\Enums\InterviewStatus;
 use App\Http\Requests\Interview\StoreInterviewSessionRequest;
 use App\Models\InterviewSession;
 use App\Services\InterviewUsage;
+use App\Speech\Contracts\TextToSpeech;
+use App\Speech\Exceptions\SpeechSynthesisFailed;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -22,7 +26,7 @@ class InterviewSessionController extends Controller
      */
     public function create(Request $request, InterviewUsage $usage): Response
     {
-        $draft = $this->currentDraft($request);
+        $draft = $this->currentOpenSession($request);
 
         return Inertia::render('interviews/Create', [
             'options' => [
@@ -61,22 +65,27 @@ class InterviewSessionController extends Controller
             ]);
         }
 
-        // Reusing the open draft makes repeated submits (double click, back and
-        // resubmit) update one session instead of creating duplicates.
-        $session = $this->currentDraft($request) ?? new InterviewSession;
+        // Reusing the open session makes repeated submits (double click, back
+        // and resubmit) update one session instead of creating duplicates.
+        $session = $this->currentOpenSession($request) ?? new InterviewSession;
         $session->fill($request->safe()->only(['category', 'level', 'duration_minutes']));
+
+        // A changed setup must go through the microphone and audio checks again.
+        if ($session->status === InterviewStatus::Ready) {
+            $session->transitionTo(InterviewStatus::Draft);
+        }
+
         $request->user()->interviewSessions()->save($session);
 
         return to_route('interviews.show', $session);
     }
 
     /**
-     * Session overview. Other users' sessions respond 404, not 403, so their
-     * existence is not revealed.
+     * Session overview with the pre-interview checks.
      */
     public function show(Request $request, int $interviewSession): Response
     {
-        $session = $request->user()->interviewSessions()->findOrFail($interviewSession);
+        $session = $this->findOwnSession($request, $interviewSession);
 
         return Inertia::render('interviews/Show', [
             'session' => [
@@ -87,15 +96,69 @@ class InterviewSessionController extends Controller
                 'status' => $session->status->value,
                 'statusLabel' => $session->status->label(),
                 'createdAt' => $session->created_at?->toIso8601String(),
-                'canEditSetup' => $session->status === InterviewStatus::Draft,
+                'canEditSetup' => $session->isOpenForSetup(),
             ],
+            'samplePhrase' => config('faladev.speech.sample_phrase'),
+            // The fake adapter plays a chime, not the phrase; the page says so.
+            'ttsIsFake' => config('faladev.speech.tts') === 'fake',
         ]);
     }
 
-    private function currentDraft(Request $request): ?InterviewSession
+    /**
+     * Audio for the pre-interview sound check, produced by the TTS adapter.
+     */
+    public function sampleAudio(Request $request, int $interviewSession, TextToSpeech $tts): HttpResponse|JsonResponse
+    {
+        $this->findOwnSession($request, $interviewSession);
+
+        try {
+            $speech = $tts->synthesize(config('faladev.speech.sample_phrase'));
+        } catch (SpeechSynthesisFailed $e) {
+            report($e);
+
+            return response()->json(['message' => 'Não foi possível gerar o áudio agora.'], 503);
+        }
+
+        return response($speech->audio, 200, [
+            'Content-Type' => $speech->mimeType,
+            'Cache-Control' => 'private, max-age=3600',
+        ]);
+    }
+
+    /**
+     * The user finished the microphone and audio checks.
+     */
+    public function markReady(Request $request, int $interviewSession): RedirectResponse
+    {
+        $session = $this->findOwnSession($request, $interviewSession);
+
+        // Idempotent: a repeated click must not fail.
+        if ($session->status !== InterviewStatus::Ready) {
+            if (! $session->status->canTransitionTo(InterviewStatus::Ready)) {
+                throw ValidationException::withMessages([
+                    'status' => 'Esta entrevista não está mais em preparação.',
+                ]);
+            }
+
+            $session->transitionTo(InterviewStatus::Ready);
+            $session->save();
+        }
+
+        return to_route('interviews.show', $session);
+    }
+
+    /**
+     * Other users' sessions respond 404, not 403, so their existence is not revealed.
+     */
+    private function findOwnSession(Request $request, int $id): InterviewSession
+    {
+        return $request->user()->interviewSessions()->findOrFail($id);
+    }
+
+    private function currentOpenSession(Request $request): ?InterviewSession
     {
         return $request->user()->interviewSessions()
-            ->where('status', InterviewStatus::Draft)
+            ->whereIn('status', [InterviewStatus::Draft, InterviewStatus::Ready])
             ->latest('id')
             ->first();
     }
