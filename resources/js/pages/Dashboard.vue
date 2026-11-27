@@ -2,6 +2,7 @@
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { History, Mic, Play } from '@lucide/vue';
 import { computed } from 'vue';
+import InterviewSessionList from '@/components/interview/InterviewSessionList.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,12 +13,8 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { dashboard } from '@/routes';
-import { create, show } from '@/routes/interviews';
-import type {
-    InterviewSessionSummary,
-    InterviewStatus,
-    UsageSummary,
-} from '@/types';
+import { create, index, show } from '@/routes/interviews';
+import type { InterviewSessionSummary, UsageSummary } from '@/types';
 
 defineOptions({
     layout: {
@@ -50,33 +47,6 @@ const usagePercent = computed(() =>
         ? Math.min((props.usage.used / props.usage.limit) * 100, 100)
         : 100,
 );
-
-// Colour is never the only signal: every status also shows its text label.
-const statusDotClass = (status: InterviewStatus): string => {
-    switch (status) {
-        case 'report_ready':
-        case 'completed':
-            return 'bg-success';
-        case 'failed_retryable':
-            return 'bg-destructive';
-        case 'evaluating':
-            return 'bg-highlight';
-        case 'draft':
-        case 'ready':
-            return 'bg-muted-foreground';
-        default:
-            return 'bg-voice';
-    }
-};
-
-const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-});
-
-const formatDate = (iso: string | null): string =>
-    iso ? dateFormatter.format(new Date(iso)) : '';
 </script>
 
 <template>
@@ -228,41 +198,15 @@ const formatDate = (iso: string | null): string =>
                 </CardContent>
             </Card>
 
-            <Card v-else class="py-0">
-                <ul class="divide-y divide-border">
-                    <li
-                        v-for="session in recentSessions"
-                        :key="session.id"
-                        data-test="recent-session"
-                    >
-                        <Link
-                            :href="show(session.id)"
-                            class="flex flex-col gap-1 px-4 py-3 transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none sm:flex-row sm:items-center sm:justify-between"
-                        >
-                            <div>
-                                <p class="font-medium">
-                                    {{ session.category }}
-                                </p>
-                                <p class="text-sm text-muted-foreground">
-                                    {{ session.level }} ·
-                                    {{ session.duration }} ·
-                                    {{ formatDate(session.createdAt) }}
-                                </p>
-                            </div>
-                            <span
-                                class="inline-flex items-center gap-2 text-sm text-muted-foreground"
-                            >
-                                <span
-                                    class="size-2 rounded-full"
-                                    :class="statusDotClass(session.status)"
-                                    aria-hidden="true"
-                                />
-                                {{ session.statusLabel }}
-                            </span>
-                        </Link>
-                    </li>
-                </ul>
-            </Card>
+            <template v-else>
+                <InterviewSessionList :sessions="recentSessions" />
+                <Link
+                    :href="index()"
+                    class="inline-block text-sm font-medium text-primary hover:underline"
+                >
+                    Ver histórico completo
+                </Link>
+            </template>
         </section>
     </div>
 </template>

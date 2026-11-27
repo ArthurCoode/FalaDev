@@ -24,15 +24,7 @@ class DashboardController extends Controller
             ->latest('id')
             ->limit(self::RECENT_SESSIONS)
             ->get()
-            ->map(fn (InterviewSession $session) => [
-                'id' => $session->id,
-                'category' => $session->category->label(),
-                'level' => $session->level->label(),
-                'duration' => $session->duration_minutes->label(),
-                'status' => $session->status->value,
-                'statusLabel' => $session->status->label(),
-                'createdAt' => $session->created_at?->toIso8601String(),
-            ]);
+            ->map(fn (InterviewSession $session) => $session->summary());
 
         $inProgress = $user->interviewInProgress();
 
