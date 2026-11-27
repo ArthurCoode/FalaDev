@@ -1,23 +1,27 @@
 # Local development services only. Not used in production.
 services:
-  pgsql:
-    image: postgres:17
-    container_name: faladev-pgsql
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${DB_DATABASE:-faladev}
-      POSTGRES_USER: ${DB_USERNAME:-faladev}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
-    ports:
-      # 5433 on the host avoids clashing with a locally installed PostgreSQL on 5432.
-      - "${DB_PORT:-5433}:5432"
-    volumes:
-      - faladev-pgsql:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-faladev} -d ${DB_DATABASE:-faladev}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+    pgsql:
+        image: postgres:17
+        container_name: faladev-pgsql
+        restart: unless-stopped
+        environment:
+            POSTGRES_DB: ${DB_DATABASE:-faladev}
+            POSTGRES_USER: ${DB_USERNAME:-faladev}
+            POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+        ports:
+            # 5433 on the host avoids clashing with a locally installed PostgreSQL on 5432.
+            - '${DB_PORT:-5433}:5432'
+        volumes:
+            - faladev-pgsql:/var/lib/postgresql/data
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'pg_isready -U ${DB_USERNAME:-faladev} -d ${DB_DATABASE:-faladev}',
+                ]
+            interval: 5s
+            timeout: 5s
+            retries: 10
 
 volumes:
-  faladev-pgsql:
+    faladev-pgsql:
