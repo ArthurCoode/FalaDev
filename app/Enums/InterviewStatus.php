@@ -4,7 +4,7 @@ namespace App\Enums;
 
 /**
  * Lifecycle of an interview session (see cursor/skills/FalaDev.md, section 8).
- * Transition rules are not enforced yet; they arrive with the turn-based flow (step 2).
+ * Allowed transitions are added here as each part of the flow is built.
  */
 enum InterviewStatus: string
 {
@@ -19,6 +19,17 @@ enum InterviewStatus: string
     case Evaluating = 'evaluating';
     case ReportReady = 'report_ready';
     case FailedRetryable = 'failed_retryable';
+
+    public function canTransitionTo(self $next): bool
+    {
+        return in_array($next, match ($this) {
+            // Setup confirmed after the microphone and audio checks.
+            self::Draft => [self::Ready],
+            // Changing the setup sends the session back to the checks.
+            self::Ready => [self::Draft],
+            default => [],
+        }, true);
+    }
 
     /**
      * Label shown in the (pt-BR) interface.

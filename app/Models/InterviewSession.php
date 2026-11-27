@@ -6,6 +6,7 @@ use App\Enums\InterviewCategory;
 use App\Enums\InterviewDuration;
 use App\Enums\InterviewLevel;
 use App\Enums\InterviewStatus;
+use App\Exceptions\InvalidInterviewTransition;
 use Database\Factories\InterviewSessionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -57,6 +58,30 @@ class InterviewSession extends Model
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
+    }
+
+    /**
+     * The only way to change the status: rejects transitions the lifecycle
+     * does not allow. Does not save, so callers can persist other changes
+     * in the same write.
+     *
+     * @throws InvalidInterviewTransition
+     */
+    public function transitionTo(InterviewStatus $status): void
+    {
+        if (! $this->status->canTransitionTo($status)) {
+            throw new InvalidInterviewTransition($this->status, $status);
+        }
+
+        $this->status = $status;
+    }
+
+    /**
+     * Draft or ready: configured but not started, so the setup can still change.
+     */
+    public function isOpenForSetup(): bool
+    {
+        return in_array($this->status, [InterviewStatus::Draft, InterviewStatus::Ready], true);
     }
 
     /**
