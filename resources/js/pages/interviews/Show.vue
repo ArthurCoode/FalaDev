@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form, Head, Link } from '@inertiajs/vue3';
-import { CircleCheck, Mic, Play, Volume2 } from '@lucide/vue';
+import { CircleCheck, Flag, Mic, Play, Volume2 } from '@lucide/vue';
 import { computed, ref } from 'vue';
 import InputError from '@/components/InputError.vue';
 import MicrophoneCheck from '@/components/interview/MicrophoneCheck.vue';
@@ -17,13 +17,20 @@ import {
 } from '@/components/ui/card';
 import { Spinner } from '@/components/ui/spinner';
 import { dashboard } from '@/routes';
-import { create, ready, sampleAudio } from '@/routes/interviews';
-import type { InterviewSessionDetails } from '@/types';
+import { create, ready, start } from '@/routes/interviews';
+import type {
+    InterviewerLine,
+    InterviewSessionDetails,
+    InterviewTurnDetails,
+} from '@/types';
 
 const props = defineProps<{
     session: InterviewSessionDetails;
     samplePhrase: string;
-    ttsIsFake: boolean;
+    sampleAudioUrl: string | null;
+    /** Only filled once the interview is over. */
+    turns: InterviewTurnDetails[];
+    closing: InterviewerLine | null;
 }>();
 
 defineOptions({
@@ -69,7 +76,9 @@ const details = computed(() => [
             :description="
                 session.status === 'draft'
                     ? 'Faça os testes de áudio antes de começar.'
-                    : 'Resumo da sua sessão.'
+                    : closing
+                      ? 'Entrevista concluída.'
+                      : 'Resumo da sua sessão.'
             "
         >
             <template v-if="session.canEditSetup" #actions>
@@ -126,17 +135,9 @@ const details = computed(() => [
                     <CardContent class="space-y-3">
                         <SampleAudioCheck
                             v-model:state="sampleState"
-                            :audio-url="sampleAudio.url(session.id)"
+                            :audio-url="sampleAudioUrl"
                             :phrase="samplePhrase"
                         />
-                        <p
-                            v-if="ttsIsFake"
-                            class="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground"
-                        >
-                            Ambiente de desenvolvimento: o áudio é um sinal
-                            sonoro, não a frase falada. A voz real entra quando
-                            o serviço de voz for configurado.
-                        </p>
                     </CardContent>
                 </Card>
             </div>
@@ -188,15 +189,82 @@ const details = computed(() => [
                     pergunta.
                 </CardDescription>
             </CardHeader>
-            <CardContent class="flex flex-col items-start gap-2">
-                <Button size="lg" disabled>
-                    <Play />
-                    Iniciar entrevista
-                </Button>
-                <p class="text-xs text-muted-foreground">
-                    A entrevista por turnos ainda está em desenvolvimento.
-                </p>
+            <CardContent>
+                <Form
+                    v-bind="start.form(session.id)"
+                    class="flex flex-col items-start gap-2"
+                    v-slot="{ errors, processing }"
+                >
+                    <InputError :message="errors.status ?? errors.usage" />
+                    <Button
+                        type="submit"
+                        size="lg"
+                        :disabled="processing"
+                        data-test="start-interview-button"
+                    >
+                        <Spinner v-if="processing" />
+                        <Play v-else />
+                        Iniciar entrevista
+                    </Button>
+                    <p class="text-xs text-muted-foreground">
+                        O microfone só é ativado quando você clicar em gravar
+                        cada resposta.
+                    </p>
+                </Form>
             </CardContent>
         </Card>
+
+        <!-- Finished: closing line and the full transcript -->
+        <template v-else-if="closing">
+            <Card>
+                <CardHeader>
+                    <CardTitle class="flex items-center gap-2 text-base">
+                        <Flag class="size-5 text-primary" aria-hidden="true" />
+                        Entrevista concluída
+                    </CardTitle>
+                    <CardDescription lang="en" class="italic">
+                        “{{ closing.text }}”
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <p class="text-sm text-muted-foreground">
+                        Suas respostas foram salvas. O relatório com notas e
+                        feedback ainda está em desenvolvimento; por enquanto,
+                        confira abaixo a transcrição da entrevista.
+                    </p>
+                </CardContent>
+            </Card>
+
+            <section aria-labelledby="transcript-heading" class="space-y-3">
+                <h2 id="transcript-heading" class="text-lg font-semibold">
+                    Transcrição
+                </h2>
+                <p
+                    v-if="turns.length === 0"
+                    class="text-sm text-muted-foreground"
+                >
+                    Nenhuma pergunta foi feita nesta sessão.
+                </p>
+                <Card v-for="turn in turns" :key="turn.id">
+                    <CardContent class="space-y-3">
+                        <p class="text-xs text-muted-foreground">
+                            Pergunta {{ turn.position
+                            }}{{ turn.isFollowUp ? ' · aprofundamento' : '' }}
+                        </p>
+                        <p class="font-medium" lang="en">{{ turn.question }}</p>
+                        <p
+                            v-if="turn.answer"
+                            class="border-l-2 border-primary pl-3 text-sm whitespace-pre-line"
+                            lang="en"
+                        >
+                            {{ turn.answer }}
+                        </p>
+                        <p v-else class="text-sm text-muted-foreground">
+                            Sem resposta: a entrevista foi encerrada antes.
+                        </p>
+                    </CardContent>
+                </Card>
+            </section>
+        </template>
     </div>
 </template>

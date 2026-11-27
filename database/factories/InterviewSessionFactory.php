@@ -32,6 +32,25 @@ class InterviewSessionFactory extends Factory
     }
 
     /**
+     * Indicate that the microphone and audio checks are done.
+     */
+    public function ready(): static
+    {
+        return $this->state(fn () => ['status' => InterviewStatus::Ready]);
+    }
+
+    /**
+     * Indicate that the interview has started and is waiting for answers.
+     */
+    public function inProgress(): static
+    {
+        return $this->state(fn () => [
+            'status' => InterviewStatus::Asking,
+            'started_at' => now(),
+        ]);
+    }
+
+    /**
      * Indicate that the interview has finished and its report is available.
      */
     public function completed(): static

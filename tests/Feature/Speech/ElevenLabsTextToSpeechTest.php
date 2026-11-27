@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\InterviewSession;
 use App\Speech\Contracts\TextToSpeech;
 use App\Speech\ElevenLabsTextToSpeech;
 use App\Speech\Exceptions\SpeechSynthesisFailed;
@@ -58,32 +57,4 @@ test('the container builds the ElevenLabs driver from config', function () {
     config(['faladev.speech.tts' => 'elevenlabs']);
 
     expect(app(TextToSpeech::class))->toBeInstanceOf(ElevenLabsTextToSpeech::class);
-});
-
-test('the sample phrase is synthesized once and then served from cache', function () {
-    config(['faladev.speech.tts' => 'elevenlabs']);
-    Http::fake(['api.elevenlabs.io/*' => Http::response('mp3-bytes', 200, ['Content-Type' => 'audio/mpeg'])]);
-    $session = InterviewSession::factory()->create();
-
-    foreach (range(1, 3) as $attempt) {
-        $this->actingAs($session->user)
-            ->get(route('interviews.sample-audio', $session))
-            ->assertOk()
-            ->assertHeader('Content-Type', 'audio/mpeg');
-    }
-
-    Http::assertSentCount(1);
-});
-
-test('a failed synthesis is not cached, so a retry calls the provider again', function () {
-    config(['faladev.speech.tts' => 'elevenlabs']);
-    Http::fakeSequence('api.elevenlabs.io/*')
-        ->push('error', 500)
-        ->push('mp3-bytes', 200, ['Content-Type' => 'audio/mpeg']);
-    $session = InterviewSession::factory()->create();
-
-    $this->actingAs($session->user)->get(route('interviews.sample-audio', $session))->assertStatus(503);
-    $this->actingAs($session->user)->get(route('interviews.sample-audio', $session))->assertOk();
-
-    Http::assertSentCount(2);
 });

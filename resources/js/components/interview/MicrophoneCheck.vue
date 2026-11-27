@@ -13,8 +13,10 @@ import {
 } from '@lucide/vue';
 import { computed, watch } from 'vue';
 import { Button } from '@/components/ui/button';
-import { useAudioRecorder } from '@/composables/useAudioRecorder';
-import type { RecorderError } from '@/composables/useAudioRecorder';
+import {
+    recorderErrorMessages as errorMessages,
+    useAudioRecorder,
+} from '@/composables/useAudioRecorder';
 
 /** Peak level below this means we probably captured silence. */
 const MIN_PEAK_LEVEL = 0.15;
@@ -35,20 +37,6 @@ watch(
     },
     { immediate: true },
 );
-
-const errorMessages: Record<RecorderError, string> = {
-    permission_denied:
-        'O acesso ao microfone foi bloqueado. Libere o microfone para este site nas configurações do navegador (ícone ao lado do endereço) e tente de novo.',
-    no_device:
-        'Nenhum microfone foi encontrado. Conecte um microfone ou fone com microfone e tente de novo.',
-    device_busy:
-        'O microfone está sendo usado por outro aplicativo ou não respondeu. Feche outros apps que usam o microfone e tente de novo.',
-    insecure_context:
-        'O navegador só libera o microfone em conexões seguras. Acesse o FalaDev por https ou por localhost.',
-    unsupported:
-        'Este navegador não permite gravar áudio. Use uma versão recente do Chrome, Edge, Firefox ou Safari.',
-    unknown: 'Não foi possível acessar o microfone. Tente de novo.',
-};
 
 /** Ten bars that light up with the current input level. */
 const bars = Array.from({ length: 10 }, (_, i) => (i + 1) / 10);

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\InterviewStatus;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -55,5 +56,16 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     public function interviewSessions(): HasMany
     {
         return $this->hasMany(InterviewSession::class);
+    }
+
+    /**
+     * The interview currently running, if any. Only one runs at a time.
+     */
+    public function interviewInProgress(): ?InterviewSession
+    {
+        return $this->interviewSessions()
+            ->where('status', InterviewStatus::Asking)
+            ->latest('id')
+            ->first();
     }
 }

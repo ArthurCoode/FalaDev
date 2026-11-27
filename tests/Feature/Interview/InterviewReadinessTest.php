@@ -4,9 +4,7 @@ use App\Enums\InterviewCategory;
 use App\Enums\InterviewStatus;
 use App\Models\InterviewSession;
 use App\Models\User;
-use App\Speech\Contracts\TextToSpeech;
-use App\Speech\Exceptions\SpeechSynthesisFailed;
-use App\Speech\SynthesizedSpeech;
+use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 
 test('the session page includes the sample phrase for the audio check', function () {
@@ -18,39 +16,33 @@ test('the session page includes the sample phrase for the audio check', function
             ->where('samplePhrase', config('faladev.speech.sample_phrase')));
 });
 
-test('the sample audio is served by the TTS adapter', function () {
-    $session = InterviewSession::factory()->create();
-
-    $response = $this->actingAs($session->user)
-        ->get(route('interviews.sample-audio', $session))
-        ->assertOk()
-        ->assertHeader('Content-Type', 'audio/wav');
-
-    expect(substr($response->getContent(), 0, 4))->toBe('RIFF');
-});
-
-test('a TTS failure returns 503 so the page can offer the text and a retry', function () {
-    app()->bind(TextToSpeech::class, fn () => new class implements TextToSpeech
-    {
-        public function synthesize(string $text): SynthesizedSpeech
-        {
-            throw new SpeechSynthesisFailed('provider down');
-        }
-    });
+test('the page links the pre-recorded sample phrase when it exists', function () {
+    $phrases = fakePrerecordedPhrases();
+    $phrases->store(config('faladev.speech.sample_phrase'), 'mp3-bytes');
     $session = InterviewSession::factory()->create();
 
     $this->actingAs($session->user)
-        ->get(route('interviews.sample-audio', $session))
-        ->assertStatus(503)
-        ->assertJson(['message' => 'Não foi possível gerar o áudio agora.']);
+        ->get(route('interviews.show', $session))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('sampleAudioUrl', $phrases->url(config('faladev.speech.sample_phrase'))));
 });
 
-test("the sample audio of another user's session is not available", function () {
+test('without a recording the page gets no audio URL and the text stays on screen', function () {
+    fakePrerecordedPhrases();
     $session = InterviewSession::factory()->create();
 
-    $this->actingAs(User::factory()->create())
-        ->get(route('interviews.sample-audio', $session))
-        ->assertNotFound();
+    $this->actingAs($session->user)
+        ->get(route('interviews.show', $session))
+        ->assertInertia(fn (Assert $page) => $page->where('sampleAudioUrl', null));
+});
+
+test('showing the session page never calls the TTS provider', function () {
+    config(['faladev.speech.tts' => 'elevenlabs']);
+    $session = InterviewSession::factory()->create();
+
+    $this->actingAs($session->user)->get(route('interviews.show', $session))->assertOk();
+
+    Http::assertNothingSent();
 });
 
 test('finishing the checks marks a draft session as ready', function () {

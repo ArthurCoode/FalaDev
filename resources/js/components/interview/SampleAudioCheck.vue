@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
- * Plays the interviewer's test phrase (TTS, fetched from the server).
- * The text is always on screen, so a TTS failure never blocks the user.
+ * Plays the interviewer's pre-recorded test phrase. The text is always on
+ * screen, so a missing or broken recording never blocks the user.
  */
 import {
     CircleAlert,
@@ -10,68 +10,38 @@ import {
     RotateCcw,
     Volume2,
 } from '@lucide/vue';
-import { onBeforeUnmount, ref } from 'vue';
+import { onMounted, watch } from 'vue';
 import { Button } from '@/components/ui/button';
+import { useAudioPlayer } from '@/composables/useAudioPlayer';
+import type { PlaybackState } from '@/composables/useAudioPlayer';
 
-export type SampleAudioState =
-    | 'idle'
-    | 'loading'
-    | 'playing'
-    | 'played'
-    | 'failed';
+export type SampleAudioState = PlaybackState;
 
 const props = defineProps<{
-    audioUrl: string;
+    audioUrl: string | null;
     phrase: string;
 }>();
 
 const state = defineModel<SampleAudioState>('state', { default: 'idle' });
 
-let objectUrl: string | null = null;
-let audio: HTMLAudioElement | null = null;
+const player = useAudioPlayer();
 
-async function play(): Promise<void> {
-    if (state.value === 'loading' || state.value === 'playing') {
-        return;
-    }
+watch(player.state, (value) => {
+    state.value = value;
+});
 
-    state.value = 'loading';
-
-    try {
-        if (!objectUrl) {
-            const response = await fetch(props.audioUrl, {
-                headers: { Accept: 'audio/*' },
-                credentials: 'same-origin',
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-
-            objectUrl = URL.createObjectURL(await response.blob());
-        }
-
-        audio = new Audio(objectUrl);
-        audio.onended = () => {
-            state.value = 'played';
-        };
-        audio.onerror = () => {
-            state.value = 'failed';
-        };
-        await audio.play();
-        state.value = 'playing';
-    } catch {
+onMounted(() => {
+    // Not recorded yet: same fallback as a playback failure.
+    if (!props.audioUrl) {
         state.value = 'failed';
     }
-}
-
-onBeforeUnmount(() => {
-    audio?.pause();
-
-    if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-    }
 });
+
+function play(): void {
+    if (state.value !== 'loading' && state.value !== 'playing') {
+        void player.play(props.audioUrl);
+    }
+}
 </script>
 
 <template>
@@ -84,6 +54,7 @@ onBeforeUnmount(() => {
         </blockquote>
 
         <Button
+            v-if="audioUrl"
             :variant="state === 'played' ? 'outline' : 'default'"
             :disabled="state === 'loading' || state === 'playing'"
             data-test="play-sample-audio"
@@ -118,9 +89,9 @@ onBeforeUnmount(() => {
                 class="mt-0.5 size-5 shrink-0 text-warning"
                 aria-hidden="true"
             />
-            Não foi possível reproduzir o áudio agora. Você pode tentar de novo
-            ou seguir assim: durante a entrevista, as perguntas também aparecem
-            escritas na tela.
+            Não foi possível reproduzir o áudio agora. Você pode
+            {{ audioUrl ? 'tentar de novo ou ' : '' }}seguir assim: durante a
+            entrevista, as perguntas também aparecem escritas na tela.
         </p>
     </div>
 </template>

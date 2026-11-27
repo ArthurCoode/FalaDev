@@ -15,9 +15,26 @@ export type RecorderError =
     | 'device_busy'
     | 'unknown';
 
+/** Messages shown to the user (pt-BR) for each recorder error. */
+export const recorderErrorMessages: Record<RecorderError, string> = {
+    permission_denied:
+        'O acesso ao microfone foi bloqueado. Libere o microfone para este site nas configurações do navegador (ícone ao lado do endereço) e tente de novo.',
+    no_device:
+        'Nenhum microfone foi encontrado. Conecte um microfone ou fone com microfone e tente de novo.',
+    device_busy:
+        'O microfone está sendo usado por outro aplicativo ou não respondeu. Feche outros apps que usam o microfone e tente de novo.',
+    insecure_context:
+        'O navegador só libera o microfone em conexões seguras. Acesse o FalaDev por https ou por localhost.',
+    unsupported:
+        'Este navegador não permite gravar áudio. Use uma versão recente do Chrome, Edge, Firefox ou Safari.',
+    unknown: 'Não foi possível acessar o microfone. Tente de novo.',
+};
+
 type Options = {
     /** Recording stops by itself after this long. */
     maxDurationMs?: number;
+    /** Lower bitrates keep uploads small; speech stays intelligible at 32 kbps. */
+    audioBitsPerSecond?: number;
 };
 
 /**
@@ -158,7 +175,9 @@ export function useAudioRecorder(options: Options = {}) {
 
         chunks = [];
         discard = false;
-        recorder = new MediaRecorder(stream);
+        recorder = new MediaRecorder(stream, {
+            audioBitsPerSecond: options.audioBitsPerSecond,
+        });
         recorder.ondataavailable = (event) => {
             if (event.data.size > 0) {
                 chunks.push(event.data);

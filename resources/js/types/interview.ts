@@ -48,3 +48,19 @@ export type InterviewSetupDraft = {
 export type InterviewSessionDetails = InterviewSessionSummary & {
     canEditSetup: boolean;
 };
+
+export type InterviewTurnDetails = {
+    id: number;
+    position: number;
+    question: string;
+    /** Pre-recorded audio of the question; null when only the text exists. */
+    audioUrl: string | null;
+    isFollowUp: boolean;
+    answer: string | null;
+};
+
+/** A fixed interviewer line (opening, closing) and its recording. */
+export type InterviewerLine = {
+    text: string;
+    audioUrl: string | null;
+};

@@ -25,8 +25,13 @@ enum InterviewStatus: string
         return in_array($next, match ($this) {
             // Setup confirmed after the microphone and audio checks.
             self::Draft => [self::Ready],
-            // Changing the setup sends the session back to the checks.
-            self::Ready => [self::Draft],
+            // Changing the setup sends the session back to the checks;
+            // starting the interview asks the first question.
+            self::Ready => [self::Draft, self::Asking],
+            // Last question answered, time's up or the user ended it.
+            // Recording, transcribing and reviewing happen in the browser
+            // and are not stored (see App\Interview\InterviewFlow).
+            self::Asking => [self::Completed],
             default => [],
         }, true);
     }

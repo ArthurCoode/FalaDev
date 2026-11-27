@@ -45,20 +45,36 @@ Para a segunda opção, crie o banco uma vez:
 - `app/Models/InterviewSession`: pertence a um usuário e tem vários `turns` ordenados por posição. `status` não é atribuível em massa.
 - `app/Models/InterviewTurn`: pergunta, transcrição confirmada, dica/repetição e metadados operacionais. A posição é única por sessão.
 - `app/Http/Controllers/DashboardController`: tela inicial com as 5 entrevistas mais recentes e o uso do mês.
-- `app/Http/Controllers/InterviewSessionController`: configuração da entrevista (`/interviews/create`) e resumo da sessão (`/interviews/{id}`). Cada usuário tem no máximo um rascunho aberto: salvar de novo atualiza o mesmo rascunho. Sessões de outros usuários respondem 404.
+- `app/Http/Controllers/InterviewSessionController`: configuração da entrevista (`/interviews/create`), página da sessão (`/interviews/{id}`), início e encerramento. A página da sessão mostra os testes de áudio, a entrevista em andamento (`interviews/Room`) ou a transcrição depois de concluída. Cada usuário tem no máximo um rascunho aberto: salvar de novo atualiza o mesmo rascunho. Sessões de outros usuários respondem 404.
+- **Uma entrevista por vez:** com uma em andamento (`User::interviewInProgress()`), a tela inicial mostra "Continuar entrevista", `/interviews/create` e o salvamento da configuração levam de volta a ela, e iniciar outra é recusado.
+- `app/Http/Controllers/InterviewTurnController`: ações na pergunta atual (transcrever a gravação, enviar a resposta revisada, repetir a pergunta).
+- `app/Interview/InterviewFlow`: regras da entrevista por turnos. Cada escrita trava a linha da sessão; repetir uma ação já feita (clique duplo, reenvio após queda de conexão) não tem efeito. Ao enviar uma resposta, o entrevistador decide a próxima pergunta ou encerra. Se o tempo acabou, a resposta em andamento ainda conta e depois a entrevista termina.
+- `app/Interview/Contracts/Interviewer`: decide a próxima pergunta. `FakeInterviewer` segue um roteiro fixo por categoria: 3 perguntas principais (15 min) ou 4 (30 min), cada uma seguida de uma pergunta de aprofundamento. Ele não lê as respostas nem adapta ao nível; isso fica para o LLM.
 - `app/Services/InterviewUsage`: limite mensal. Só contam entrevistas **iniciadas** (`started_at`); rascunhos não consomem o limite.
-- **Estados da sessão:** `InterviewStatus::canTransitionTo()` define as transições permitidas e `InterviewSession::transitionTo()` é o único jeito de mudar o status. Por enquanto: `draft → ready` (testes de áudio concluídos) e `ready → draft` (configuração alterada).
+- **Estados da sessão:** `InterviewStatus::canTransitionTo()` define as transições permitidas e `InterviewSession::transitionTo()` é o único jeito de mudar o status. Por enquanto: `draft → ready` (testes de áudio concluídos), `ready → draft` (configuração alterada), `ready → asking` (entrevista iniciada) e `asking → completed` (última pergunta respondida, tempo esgotado ou encerramento pelo usuário). Gravar, transcrever e revisar acontecem no navegador e não viram estado no servidor, porque nada é salvo até o envio.
 
 ## Voz (TTS/STT)
 
-Os provedores ficam atrás de interfaces em `app/Speech`, escolhidas em `config/faladev.php`:
+Os provedores ficam atrás de interfaces em `app/Speech`, escolhidas em `config/faladev.php`.
 
-- `TextToSpeech` (`FALADEV_TTS_DRIVER`):
-  - `elevenlabs`: voz real. Precisa de `ELEVENLABS_API_KEY` no `.env` (nunca no código nem no `.env.example`). Voz, modelo e formato ficam em `config/services.php` (padrão: voz "Matilda", modelo `eleven_v4_turbo`, MP3 64 kbps).
-  - `fake`: sinal sonoro em WAV, sem conta. Usado nos testes automatizados; a tela avisa quando ele está ativo.
-- A frase de teste é gerada uma vez e guardada em cache por 30 dias (cada chamada gasta cota do provedor). Falhas não vão para o cache.
-- Os testes nunca chamam provedores reais: `Http::preventStrayRequests()` em `tests/TestCase.php` e `FALADEV_TTS_DRIVER=fake` no `phpunit.xml`.
-- STT (fala para texto) ainda não existe; entra com a gravação das respostas.
+**Voz do entrevistador (TTS): frases pré-gravadas.** As páginas nunca chamam a ElevenLabs. Toda frase fixa (frase de teste, abertura, encerramento e perguntas do roteiro) é gravada uma vez em MP3 e servida como arquivo estático de `public/audio/interviewer/`, versionado no git:
+
+```bash
+php artisan faladev:record-phrases --dry-run   # quantas frases faltam e quantos caracteres vão gastar
+php artisan faladev:record-phrases             # grava só as que faltam
+```
+
+- O nome do arquivo é um hash do texto e da voz (voz, modelo e formato). Editar uma frase ou trocar a voz aponta para um arquivo novo; até gravar de novo, a página mostra só o texto. Arquivos antigos podem ser apagados à mão.
+- O comando usa o `TextToSpeech` configurado em `FALADEV_TTS_DRIVER`:
+    - `elevenlabs`: voz real. Precisa de `ELEVENLABS_API_KEY` no `.env` (nunca no código nem no `.env.example`). Voz, modelo e formato ficam em `config/services.php` (padrão: voz "Matilda", modelo `eleven_v4_turbo`, MP3 64 kbps).
+    - `fake`: sinal sonoro em WAV. O comando recusa esse driver, porque não gera MP3.
+- Perguntas sem gravação (por exemplo, as que o LLM vai gerar) aparecem só como texto, com aviso na tela. TTS sob demanda fica para quando o entrevistador real existir.
+
+**Transcrição (STT):** interface `SpeechToText` (`FALADEV_STT_DRIVER`). Por enquanto só existe o `fake`, que ignora o áudio e devolve um texto simulado para a pessoa substituir na revisão; a tela avisa. O áudio chega como upload temporário (até 5 MB, WebM/Ogg/MP4) e não é guardado. Nos metadados do turno ficam só contagem e latência da transcrição.
+
+**Entrevistador:** interface `Interviewer` (`FALADEV_INTERVIEWER_DRIVER`), hoje só `fake` (roteiro fixo, ver acima).
+
+Os testes nunca chamam provedores reais: `Http::preventStrayRequests()` em `tests/TestCase.php` e drivers `fake` no `phpunit.xml`. Os testes das frases usam um diretório temporário (`fakePrerecordedPhrases()` em `tests/Pest.php`).
 
 O teste de microfone roda só no navegador (`resources/js/composables/useAudioRecorder.ts`): pede permissão no clique, mostra o volume ao vivo, grava localmente e libera o microfone ao terminar. Nada é enviado ao servidor.
 
@@ -69,7 +85,9 @@ Telas novas usam os componentes do FalaDev em vez de montar a estrutura à mão:
 - `PageHeader`: título (`h1`), descrição e ações da página.
 - `OptionCardGroup`: escolha única em cartões, com `input radio` nativo (funciona com o `<Form>` do Inertia e com teclado).
 - `interview/MicrophoneCheck` e `interview/SampleAudioCheck`: testes de áudio antes da entrevista.
-- `useAudioRecorder`: gravação com permissão, nível de entrada, parar/cancelar e reprodução local; será reaproveitado na gravação das respostas.
+- `interview/AnswerRecorder`: uma resposta (gravar → transcrever → revisar/corrigir → enviar). Se a transcrição falhar, a gravação continua em memória para tentar de novo. Avisa antes de sair da página com resposta não enviada.
+- `useAudioRecorder`: gravação com permissão, nível de entrada, parar/cancelar e reprodução local. Nas respostas grava a 32 kbps para o upload ficar pequeno.
+- `useAudioPlayer`: toca as frases do entrevistador, uma ou várias em sequência. Se o navegador bloquear o autoplay, volta para "idle" e a pessoa clica para ouvir.
 
 As cores vêm sempre dos tokens de `resources/css/app.css` (`bg-primary`, `text-muted-foreground`, `bg-voice`...), nunca de valores fixos.
 

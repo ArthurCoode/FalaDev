@@ -1,6 +1,8 @@
 <?php
 
+use App\Speech\PrerecordedPhrases;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\File;
 use Tests\TestCase;
 
 /*
@@ -44,7 +46,17 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * Points the pre-recorded interviewer audio to an empty temporary directory,
+ * so tests do not depend on (or write to) the files in public/.
+ */
+function fakePrerecordedPhrases(): PrerecordedPhrases
 {
-    // ..
+    $directory = storage_path('framework/testing/phrases-'.uniqid());
+    $phrases = new PrerecordedPhrases($directory, 'audio/testing', ['voice', 'model', 'format']);
+    app()->instance(PrerecordedPhrases::class, $phrases);
+
+    test()->beforeApplicationDestroyed(fn () => File::deleteDirectory($directory));
+
+    return $phrases;
 }

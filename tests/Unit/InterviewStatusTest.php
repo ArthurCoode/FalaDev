@@ -14,7 +14,7 @@ test('a ready session can go back to draft', function () {
     expect(InterviewStatus::Ready->canTransitionTo(InterviewStatus::Draft))->toBeTrue();
 });
 
-test('finished sessions have no transitions yet', function () {
+test('report-ready sessions have no transitions yet', function () {
     foreach (InterviewStatus::cases() as $next) {
         expect(InterviewStatus::ReportReady->canTransitionTo($next))->toBeFalse();
     }
@@ -25,3 +25,10 @@ test('the model refuses a transition the lifecycle does not allow', function () 
 
     $session->transitionTo(InterviewStatus::ReportReady);
 })->throws(InvalidInterviewTransition::class);
+
+test('a ready session can start, and a running one can only complete', function () {
+    expect(InterviewStatus::Ready->canTransitionTo(InterviewStatus::Asking))->toBeTrue()
+        ->and(InterviewStatus::Asking->canTransitionTo(InterviewStatus::Completed))->toBeTrue()
+        ->and(InterviewStatus::Asking->canTransitionTo(InterviewStatus::Ready))->toBeFalse()
+        ->and(InterviewStatus::Completed->canTransitionTo(InterviewStatus::Asking))->toBeFalse();
+});

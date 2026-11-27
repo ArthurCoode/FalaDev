@@ -7,16 +7,13 @@ use App\Enums\InterviewDuration;
 use App\Enums\InterviewLevel;
 use App\Enums\InterviewStatus;
 use App\Http\Requests\Interview\StoreInterviewSessionRequest;
+use App\Interview\InterviewFlow;
 use App\Models\InterviewSession;
+use App\Models\InterviewTurn;
 use App\Services\InterviewUsage;
-use App\Speech\Contracts\TextToSpeech;
-use App\Speech\Exceptions\SpeechSynthesisFailed;
-use App\Speech\SynthesizedSpeech;
-use Illuminate\Http\JsonResponse;
+use App\Speech\PrerecordedPhrases;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response as HttpResponse;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -26,8 +23,12 @@ class InterviewSessionController extends Controller
     /**
      * Interview setup: category, level, duration and the data notice.
      */
-    public function create(Request $request, InterviewUsage $usage): Response
+    public function create(Request $request, InterviewUsage $usage): Response|RedirectResponse
     {
+        if ($running = $this->redirectToRunningInterview($request)) {
+            return $running;
+        }
+
         $draft = $this->currentOpenSession($request);
 
         return Inertia::render('interviews/Create', [
@@ -61,6 +62,11 @@ class InterviewSessionController extends Controller
      */
     public function store(StoreInterviewSessionRequest $request, InterviewUsage $usage): RedirectResponse
     {
+        // A stale setup tab must not create a second interview either.
+        if ($running = $this->redirectToRunningInterview($request)) {
+            return $running;
+        }
+
         if ($usage->remaining($request->user()) === 0) {
             throw ValidationException::withMessages([
                 'usage' => 'Você atingiu o limite de entrevistas deste mês.',
@@ -83,74 +89,107 @@ class InterviewSessionController extends Controller
     }
 
     /**
-     * Session overview with the pre-interview checks.
+     * Session page: the pre-interview checks, the interview itself while it
+     * runs, and the transcript once it is over.
      */
-    public function show(Request $request, int $interviewSession): Response
+    public function show(Request $request, int $interviewSession, PrerecordedPhrases $phrases, InterviewFlow $flow): Response
     {
         $session = $this->findOwnSession($request, $interviewSession);
 
-        return Inertia::render('interviews/Show', [
-            'session' => [
-                'id' => $session->id,
-                'category' => $session->category->label(),
-                'level' => $session->level->label(),
-                'duration' => $session->duration_minutes->label(),
-                'status' => $session->status->value,
-                'statusLabel' => $session->status->label(),
-                'createdAt' => $session->created_at?->toIso8601String(),
-                'canEditSetup' => $session->isOpenForSetup(),
-            ],
-            'samplePhrase' => config('faladev.speech.sample_phrase'),
-            // The fake adapter plays a chime, not the phrase; the page says so.
-            'ttsIsFake' => config('faladev.speech.tts') === 'fake',
-        ]);
-    }
-
-    /**
-     * Audio for the pre-interview sound check, produced by the TTS adapter.
-     */
-    public function sampleAudio(Request $request, int $interviewSession, TextToSpeech $tts): HttpResponse|JsonResponse
-    {
-        $this->findOwnSession($request, $interviewSession);
-
-        try {
-            $speech = $this->cachedSamplePhrase($tts);
-        } catch (SpeechSynthesisFailed $e) {
-            report($e);
-
-            return response()->json(['message' => 'Não foi possível gerar o áudio agora.'], 503);
+        if ($session->status === InterviewStatus::Asking) {
+            return $this->room($session, $phrases, $flow);
         }
 
-        return response($speech->audio, 200, [
-            'Content-Type' => $speech->mimeType,
-            'Cache-Control' => 'private, max-age=3600',
+        $samplePhrase = config('faladev.speech.sample_phrase');
+        $closing = config('faladev.interview.closing');
+        $isFinished = $session->completed_at !== null;
+
+        return Inertia::render('interviews/Show', [
+            'session' => $this->sessionDetails($session),
+            'samplePhrase' => $samplePhrase,
+            'sampleAudioUrl' => $phrases->url($samplePhrase),
+            'turns' => $isFinished
+                ? $session->turns->map(fn (InterviewTurn $turn) => $this->turnDetails($turn, $phrases))->all()
+                : [],
+            'closing' => $isFinished ? ['text' => $closing, 'audioUrl' => $phrases->url($closing)] : null,
         ]);
     }
 
     /**
-     * The sample phrase never changes, so it is synthesized once and reused:
-     * each provider call costs characters from the TTS quota. The key covers
-     * every setting that changes the audio. Failures are not cached.
+     * The user clicked "Iniciar entrevista": the first question is created.
      */
-    private function cachedSamplePhrase(TextToSpeech $tts): SynthesizedSpeech
+    public function start(Request $request, int $interviewSession, InterviewFlow $flow): RedirectResponse
     {
-        $phrase = config('faladev.speech.sample_phrase');
-        $key = 'speech-sample:'.sha1(json_encode([
-            config('faladev.speech.tts'),
-            config('services.elevenlabs.voice_id'),
-            config('services.elevenlabs.model_id'),
-            config('services.elevenlabs.output_format'),
-            $phrase,
-        ]));
+        $flow->start($this->findOwnSession($request, $interviewSession));
 
-        // Base64 keeps binary audio safe in text-based cache stores (database).
-        $cached = Cache::remember($key, now()->addDays(30), function () use ($tts, $phrase) {
-            $speech = $tts->synthesize($phrase);
+        return to_route('interviews.show', $interviewSession);
+    }
 
-            return ['audio' => base64_encode($speech->audio), 'mimeType' => $speech->mimeType];
-        });
+    /**
+     * The user confirmed they want to end the interview now.
+     */
+    public function finish(Request $request, int $interviewSession, InterviewFlow $flow): RedirectResponse
+    {
+        $flow->finish($this->findOwnSession($request, $interviewSession));
 
-        return new SynthesizedSpeech(base64_decode($cached['audio']), $cached['mimeType']);
+        return to_route('interviews.show', $interviewSession);
+    }
+
+    private function room(InterviewSession $session, PrerecordedPhrases $phrases, InterviewFlow $flow): Response
+    {
+        $turns = $session->turns;
+        $current = $turns->first(fn (InterviewTurn $turn) => ! $turn->isAnswered());
+        $opening = config('faladev.interview.opening');
+
+        return Inertia::render('interviews/Room', [
+            'session' => $this->sessionDetails($session),
+            // The opening is only played before the first answer.
+            'opening' => $turns->contains(fn (InterviewTurn $turn) => $turn->isAnswered())
+                ? null
+                : ['text' => $opening, 'audioUrl' => $phrases->url($opening)],
+            'currentTurn' => $current ? $this->turnDetails($current, $phrases) : null,
+            'answeredTurns' => $turns
+                ->filter(fn (InterviewTurn $turn) => $turn->isAnswered())
+                ->map(fn (InterviewTurn $turn) => $this->turnDetails($turn, $phrases))
+                ->values()
+                ->all(),
+            'endsAt' => $flow->endsAt($session)?->format(DATE_ATOM),
+            'maxAnswerSeconds' => (int) config('faladev.interview.max_answer_seconds'),
+            // The page warns that the transcript is simulated.
+            'sttIsFake' => config('faladev.speech.stt') === 'fake',
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function sessionDetails(InterviewSession $session): array
+    {
+        return [
+            'id' => $session->id,
+            'category' => $session->category->label(),
+            'level' => $session->level->label(),
+            'duration' => $session->duration_minutes->label(),
+            'status' => $session->status->value,
+            'statusLabel' => $session->status->label(),
+            'createdAt' => $session->created_at?->toIso8601String(),
+            'canEditSetup' => $session->isOpenForSetup(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function turnDetails(InterviewTurn $turn, PrerecordedPhrases $phrases): array
+    {
+        return [
+            'id' => $turn->id,
+            'position' => $turn->position,
+            'question' => $turn->question,
+            'audioUrl' => $phrases->url($turn->question),
+            'isFollowUp' => $turn->is_follow_up,
+            'answer' => $turn->answer_transcript,
+        ];
     }
 
     /**
@@ -181,6 +220,26 @@ class InterviewSessionController extends Controller
     private function findOwnSession(Request $request, int $id): InterviewSession
     {
         return $request->user()->interviewSessions()->findOrFail($id);
+    }
+
+    /**
+     * One interview at a time: setting up a new one leads back to the one
+     * that is running, with a notice explaining why.
+     */
+    private function redirectToRunningInterview(Request $request): ?RedirectResponse
+    {
+        $running = $request->user()->interviewInProgress();
+
+        if ($running === null) {
+            return null;
+        }
+
+        Inertia::flash('toast', [
+            'type' => 'info',
+            'message' => 'Você tem uma entrevista em andamento. Conclua ou encerre essa entrevista antes de começar outra.',
+        ]);
+
+        return to_route('interviews.show', $running);
     }
 
     private function currentOpenSession(Request $request): ?InterviewSession

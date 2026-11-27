@@ -22,13 +22,39 @@ return [
     |--------------------------------------------------------------------------
     |
     | tts: "elevenlabs" (needs ELEVENLABS_API_KEY, see config/services.php) or
-    | "fake", a short chime that needs no account (development and tests).
+    | "fake". TTS is only used by `php artisan faladev:record-phrases`, which
+    | records every fixed interviewer line once into public/{prerecorded_path}.
+    | Pages only play those files, so browsing never spends TTS quota.
+    |
+    | stt: "fake" returns a simulated transcript the user can edit. A real
+    | provider will be added once it is chosen.
     |
     */
 
     'speech' => [
         'tts' => env('FALADEV_TTS_DRIVER', 'fake'),
+        'stt' => env('FALADEV_STT_DRIVER', 'fake'),
+        'prerecorded_path' => 'audio/interviewer',
         'sample_phrase' => "Hi! This is a quick audio check. If you can hear me clearly, you're ready to start your interview.",
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Interview
+    |--------------------------------------------------------------------------
+    |
+    | interviewer: "fake" follows a fixed script per category (no LLM yet).
+    | Opening and closing lines are fixed, so they are pre-recorded too.
+    |
+    */
+
+    'interview' => [
+        'interviewer' => env('FALADEV_INTERVIEWER_DRIVER', 'fake'),
+        'max_answer_seconds' => 180,
+        // Upload limit for one recorded answer, in kilobytes.
+        'max_answer_upload_kb' => 5120,
+        'opening' => "Hi, thanks for joining me today. I'll be your interviewer. I'll ask one question at a time, and you can ask me to repeat any question. Take your time to explain your reasoning. Let's get started.",
+        'closing' => "That's all the questions I have for today. Thank you for your time. Your feedback is being prepared.",
     ],
 
 ];

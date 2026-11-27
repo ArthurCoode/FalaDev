@@ -2,9 +2,14 @@
 
 namespace App\Providers;
 
+use App\Interview\Contracts\Interviewer;
+use App\Interview\FakeInterviewer;
+use App\Speech\Contracts\SpeechToText;
 use App\Speech\Contracts\TextToSpeech;
 use App\Speech\ElevenLabsTextToSpeech;
+use App\Speech\FakeSpeechToText;
 use App\Speech\FakeTextToSpeech;
+use App\Speech\PrerecordedPhrases;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +37,26 @@ class AppServiceProvider extends ServiceProvider
             ),
             default => throw new InvalidArgumentException('Unsupported TTS driver: '.config('faladev.speech.tts')),
         });
+
+        $this->app->bind(SpeechToText::class, fn () => match (config('faladev.speech.stt')) {
+            'fake' => new FakeSpeechToText,
+            default => throw new InvalidArgumentException('Unsupported STT driver: '.config('faladev.speech.stt')),
+        });
+
+        $this->app->bind(Interviewer::class, fn () => match (config('faladev.interview.interviewer')) {
+            'fake' => new FakeInterviewer,
+            default => throw new InvalidArgumentException('Unsupported interviewer driver: '.config('faladev.interview.interviewer')),
+        });
+
+        $this->app->bind(PrerecordedPhrases::class, fn () => new PrerecordedPhrases(
+            directory: public_path(config('faladev.speech.prerecorded_path')),
+            publicPath: config('faladev.speech.prerecorded_path'),
+            voiceSettings: [
+                config('services.elevenlabs.voice_id'),
+                config('services.elevenlabs.model_id'),
+                config('services.elevenlabs.output_format'),
+            ],
+        ));
     }
 
     /**
