@@ -43,6 +43,17 @@ Para a segunda opção, crie o banco uma vez:
 - `app/Models/InterviewSession`: pertence a um usuário e tem vários `turns` ordenados por posição. `status` não é atribuível em massa.
 - `app/Models/InterviewTurn`: pergunta, transcrição confirmada, dica/repetição e metadados operacionais. A posição é única por sessão.
 - `app/Http/Controllers/DashboardController`: tela inicial com as 5 entrevistas mais recentes e o uso do mês.
+- `app/Http/Controllers/InterviewSessionController`: configuração da entrevista (`/interviews/create`) e resumo da sessão (`/interviews/{id}`). Cada usuário tem no máximo um rascunho aberto: salvar de novo atualiza o mesmo rascunho. Sessões de outros usuários respondem 404.
+- `app/Services/InterviewUsage`: limite mensal. Só contam entrevistas **iniciadas** (`started_at`); rascunhos não consomem o limite.
+
+## Padrões de interface
+
+Telas novas usam os componentes do FalaDev em vez de montar a estrutura à mão:
+
+- `PageHeader`: título (`h1`), descrição e ações da página.
+- `OptionCardGroup`: escolha única em cartões, com `input radio` nativo (funciona com o `<Form>` do Inertia e com teclado).
+
+As cores vêm sempre dos tokens de `resources/css/app.css` (`bg-primary`, `text-muted-foreground`, `bg-voice`...), nunca de valores fixos.
 
 ## Idioma
 
@@ -50,4 +61,4 @@ A interface é em português (`APP_LOCALE=pt_BR`); as entrevistas são em inglê
 
 ## Configuração do produto
 
-`config/faladev.php` concentra as regras configuráveis. Por enquanto, só o limite mensal de entrevistas por conta (`FALADEV_MONTHLY_SESSION_LIMIT`, padrão 10, valor provisório até medir o custo por sessão).
+`config/faladev.php` concentra as regras configuráveis. Por enquanto, só o limite mensal de entrevistas iniciadas por conta (`FALADEV_MONTHLY_SESSION_LIMIT`, padrão 10, valor provisório até medir o custo por sessão).
