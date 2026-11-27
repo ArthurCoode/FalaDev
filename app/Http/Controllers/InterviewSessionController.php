@@ -11,10 +11,12 @@ use App\Models\InterviewSession;
 use App\Services\InterviewUsage;
 use App\Speech\Contracts\TextToSpeech;
 use App\Speech\Exceptions\SpeechSynthesisFailed;
+use App\Speech\SynthesizedSpeech;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -112,7 +114,7 @@ class InterviewSessionController extends Controller
         $this->findOwnSession($request, $interviewSession);
 
         try {
-            $speech = $tts->synthesize(config('faladev.speech.sample_phrase'));
+            $speech = $this->cachedSamplePhrase($tts);
         } catch (SpeechSynthesisFailed $e) {
             report($e);
 
@@ -123,6 +125,32 @@ class InterviewSessionController extends Controller
             'Content-Type' => $speech->mimeType,
             'Cache-Control' => 'private, max-age=3600',
         ]);
+    }
+
+    /**
+     * The sample phrase never changes, so it is synthesized once and reused:
+     * each provider call costs characters from the TTS quota. The key covers
+     * every setting that changes the audio. Failures are not cached.
+     */
+    private function cachedSamplePhrase(TextToSpeech $tts): SynthesizedSpeech
+    {
+        $phrase = config('faladev.speech.sample_phrase');
+        $key = 'speech-sample:'.sha1(json_encode([
+            config('faladev.speech.tts'),
+            config('services.elevenlabs.voice_id'),
+            config('services.elevenlabs.model_id'),
+            config('services.elevenlabs.output_format'),
+            $phrase,
+        ]));
+
+        // Base64 keeps binary audio safe in text-based cache stores (database).
+        $cached = Cache::remember($key, now()->addDays(30), function () use ($tts, $phrase) {
+            $speech = $tts->synthesize($phrase);
+
+            return ['audio' => base64_encode($speech->audio), 'mimeType' => $speech->mimeType];
+        });
+
+        return new SynthesizedSpeech(base64_decode($cached['audio']), $cached['mimeType']);
     }
 
     /**
