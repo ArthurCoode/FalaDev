@@ -9,4 +9,15 @@ enum InterviewDuration: int
 {
     case Short = 15;
     case Long = 30;
+
+    /**
+     * Label shown in the (pt-BR) interface.
+     */
+    public function label(): string
+    {
+        return match ($this) {
+            self::Short => '15 minutos',
+            self::Long => '30 minutos',
+        };
+    }
 }

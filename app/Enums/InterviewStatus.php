@@ -19,4 +19,24 @@ enum InterviewStatus: string
     case Evaluating = 'evaluating';
     case ReportReady = 'report_ready';
     case FailedRetryable = 'failed_retryable';
+
+    /**
+     * Label shown in the (pt-BR) interface.
+     */
+    public function label(): string
+    {
+        return match ($this) {
+            self::Draft => 'Em configuração',
+            self::Ready => 'Pronta para começar',
+            self::Asking,
+            self::Recording,
+            self::Transcribing,
+            self::ReviewingAnswer,
+            self::ProcessingAnswer => 'Em andamento',
+            self::Completed => 'Concluída',
+            self::Evaluating => 'Preparando feedback',
+            self::ReportReady => 'Relatório pronto',
+            self::FailedRetryable => 'Avaliação indisponível',
+        };
+    }
 }
