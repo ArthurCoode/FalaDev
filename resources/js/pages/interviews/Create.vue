@@ -163,7 +163,14 @@ const categoryIcons = {
                             </li>
                             <li>
                                 Guardamos a transcrição e o relatório no seu
-                                histórico. O áudio não é guardado.
+                                histórico. O áudio não é guardado. Você pode
+                                apagar uma entrevista a qualquer momento.
+                            </li>
+                            <li>
+                                Registramos dados técnicos, como falhas do
+                                microfone e o tempo de cada etapa, para melhorar
+                                o produto. Eles não incluem sua voz nem suas
+                                respostas.
                             </li>
                         </ul>
 

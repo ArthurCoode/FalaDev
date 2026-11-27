@@ -6,6 +6,7 @@ use App\Evaluation\Contracts\Evaluator;
 use App\Evaluation\FakeEvaluator;
 use App\Interview\Contracts\Interviewer;
 use App\Interview\FakeInterviewer;
+use App\Models\User;
 use App\Speech\Contracts\SpeechToText;
 use App\Speech\Contracts\TextToSpeech;
 use App\Speech\ElevenLabsTextToSpeech;
@@ -13,8 +14,10 @@ use App\Speech\FakeSpeechToText;
 use App\Speech\FakeTextToSpeech;
 use App\Speech\PrerecordedPhrases;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use InvalidArgumentException;
@@ -72,6 +75,21 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+
+        // Testing on a phone needs https (the browser only allows the
+        // microphone on secure pages), which a tunnel such as Cloudflare
+        // Tunnel provides. Trusting its forwarded headers makes Laravel build
+        // https links. Local only: in production this would let any client
+        // spoof the scheme and host.
+        if ($this->app->isLocal()) {
+            TrustProxies::at('*');
+        }
+
+        Gate::define('view-pilot-metrics', fn (User $user) => in_array(
+            strtolower($user->email),
+            config('faladev.pilot.admins'),
+            true,
+        ));
     }
 
     /**

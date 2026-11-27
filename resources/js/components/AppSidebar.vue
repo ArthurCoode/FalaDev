@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
-import { History, LayoutGrid, Mic } from '@lucide/vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import { ChartColumn, History, LayoutGrid, Mic } from '@lucide/vue';
+import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
@@ -18,9 +19,12 @@ import {
     create as createInterview,
     index as interviewHistory,
 } from '@/routes/interviews';
+import { metrics as pilotMetrics } from '@/routes/pilot';
 import type { NavItem } from '@/types';
 
-const mainNavItems: NavItem[] = [
+const page = usePage();
+
+const baseNavItems: NavItem[] = [
     {
         title: 'Início',
         href: dashboard(),
@@ -37,6 +41,20 @@ const mainNavItems: NavItem[] = [
         icon: History,
     },
 ];
+
+// Only pilot admins (FALADEV_PILOT_ADMINS) see the metrics page.
+const mainNavItems = computed<NavItem[]>(() =>
+    page.props.auth.canViewPilotMetrics
+        ? [
+              ...baseNavItems,
+              {
+                  title: 'Métricas do piloto',
+                  href: pilotMetrics(),
+                  icon: ChartColumn,
+              },
+          ]
+        : baseNavItems,
+);
 </script>
 
 <template>

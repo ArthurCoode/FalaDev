@@ -73,4 +73,20 @@ return [
         'evaluator' => env('FALADEV_EVALUATOR_DRIVER', 'fake'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Pilot
+    |--------------------------------------------------------------------------
+    |
+    | admins: comma-separated e-mails that can open /pilot/metrics.
+    |
+    */
+
+    'pilot' => [
+        'admins' => array_values(array_filter(array_map(
+            fn (string $email) => strtolower(trim($email)),
+            explode(',', (string) env('FALADEV_PILOT_ADMINS', '')),
+        ))),
+    ],
+
 ];

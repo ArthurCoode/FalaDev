@@ -151,7 +151,10 @@ const details = computed(() => [
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <MicrophoneCheck v-model:passed="micPassed" />
+                        <MicrophoneCheck
+                            v-model:passed="micPassed"
+                            :session-id="session.id"
+                        />
                     </CardContent>
                 </Card>
 
@@ -320,6 +323,7 @@ const details = computed(() => [
 
             <EvaluationReport
                 v-else-if="evaluation"
+                :session-id="session.id"
                 :evaluation="evaluation"
                 :score-anchors="scoreAnchors"
             />

@@ -12,15 +12,20 @@ import {
     X,
 } from '@lucide/vue';
 import { computed, watch } from 'vue';
+import { MIN_PEAK_LEVEL } from '@/lib/microphone';
+import { reportPilotEvent } from '@/lib/pilot';
 import { Button } from '@/components/ui/button';
 import {
     recorderErrorMessages as errorMessages,
     useAudioRecorder,
 } from '@/composables/useAudioRecorder';
 
-/** Peak level below this means we probably captured silence. */
-const MIN_PEAK_LEVEL = 0.15;
 const MAX_TEST_MS = 10_000;
+
+const props = defineProps<{
+    /** Links the pilot events to the session being prepared. */
+    sessionId?: number;
+}>();
 
 const passed = defineModel<boolean>('passed', { default: false });
 
@@ -37,6 +42,26 @@ watch(
     },
     { immediate: true },
 );
+
+// Pilot metrics: real-world peak levels calibrate MIN_PEAK_LEVEL, and
+// error codes show which microphone problems people hit.
+watch(state, (value) => {
+    if (value === 'recorded') {
+        reportPilotEvent(
+            {
+                type: 'microphone_check',
+                passed: heardSound.value,
+                peak: Math.round(peakLevel.value * 1000) / 1000,
+            },
+            props.sessionId,
+        );
+    } else if (value === 'error' && error.value) {
+        reportPilotEvent(
+            { type: 'microphone_error', error: error.value },
+            props.sessionId,
+        );
+    }
+});
 
 /** Ten bars that light up with the current input level. */
 const bars = Array.from({ length: 10 }, (_, i) => (i + 1) / 10);

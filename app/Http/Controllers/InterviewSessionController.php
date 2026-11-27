@@ -159,6 +159,36 @@ class InterviewSessionController extends Controller
     }
 
     /**
+     * "Este feedback foi útil?" Answering again replaces the previous answer.
+     */
+    public function rateEvaluation(Request $request, int $interviewSession): RedirectResponse
+    {
+        $session = $this->findOwnSession($request, $interviewSession);
+        $evaluation = $session->evaluation;
+
+        if ($session->status !== InterviewStatus::ReportReady || $evaluation === null) {
+            throw ValidationException::withMessages([
+                'useful' => 'Este relatório ainda não está disponível.',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'useful' => ['required', 'boolean'],
+            'comment' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $evaluation->update([
+            'user_found_useful' => (bool) $validated['useful'],
+            'user_comment' => filled($validated['comment'] ?? null) ? trim($validated['comment']) : null,
+            'user_rated_at' => now(),
+        ]);
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Obrigado pela sua avaliação!']);
+
+        return back();
+    }
+
+    /**
      * "Tentar novamente" after a failed report.
      */
     public function retryEvaluation(Request $request, int $interviewSession, InterviewFlow $flow): RedirectResponse
@@ -233,6 +263,10 @@ class InterviewSessionController extends Controller
             'improvements' => $evaluation->improvements,
             'englishFeedback' => $evaluation->english_feedback,
             'nextSteps' => $evaluation->next_steps,
+            'userFeedback' => $evaluation->user_rated_at ? [
+                'useful' => (bool) $evaluation->user_found_useful,
+                'comment' => $evaluation->user_comment,
+            ] : null,
         ];
     }
 

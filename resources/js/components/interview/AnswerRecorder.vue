@@ -18,6 +18,7 @@ import {
     useAudioRecorder,
 } from '@/composables/useAudioRecorder';
 import { post } from '@/lib/http';
+import { reportPilotEvent } from '@/lib/pilot';
 import { answer, transcribe } from '@/routes/interviews/turns';
 
 const props = defineProps<{
@@ -58,6 +59,11 @@ const bars = Array.from({ length: 10 }, (_, i) => (i + 1) / 10);
 watch(state, (value) => {
     if (value === 'recorded') {
         void sendToTranscription();
+    } else if (value === 'error' && error.value) {
+        reportPilotEvent(
+            { type: 'microphone_error', error: error.value },
+            props.sessionId,
+        );
     }
 });
 

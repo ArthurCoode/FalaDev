@@ -3,15 +3,20 @@
  * The interview report: scores always shown with their scale, and every
  * comment tied to evidence from the transcript (FalaDev.md, sections 5C and 7).
  */
+import { useForm } from '@inertiajs/vue3';
 import {
     ArrowRight,
+    ThumbsDown,
+    ThumbsUp,
     FlaskConical,
     Languages,
     ListChecks,
     Sparkles,
     TrendingUp,
 } from '@lucide/vue';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import InputError from '@/components/InputError.vue';
+import { Button } from '@/components/ui/button';
 import {
     Card,
     CardContent,
@@ -19,15 +24,32 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { Spinner } from '@/components/ui/spinner';
+import { feedback } from '@/routes/interviews/evaluation';
 import type { InterviewEvaluation } from '@/types';
 
 const props = defineProps<{
+    sessionId: number;
     evaluation: InterviewEvaluation;
     /** Score → meaning, e.g. { 1: 'insuficiente', 3: …, 5: … }. */
     scoreAnchors: Record<string, string>;
 }>();
 
 const MAX_SCORE = 5;
+
+// "Este feedback foi útil?" (pilot metric, FalaDev.md section 12).
+const feedbackForm = useForm({
+    useful: props.evaluation.userFeedback?.useful ?? (null as boolean | null),
+    comment: props.evaluation.userFeedback?.comment ?? '',
+});
+const editingFeedback = ref(props.evaluation.userFeedback === null);
+
+function sendFeedback(): void {
+    feedbackForm.post(feedback.url(props.sessionId), {
+        preserveScroll: true,
+        onSuccess: () => (editingFeedback.value = false),
+    });
+}
 const segments = Array.from({ length: MAX_SCORE }, (_, i) => i + 1);
 
 const scaleText = computed(() =>
@@ -248,6 +270,115 @@ const scaleText = computed(() =>
                         {{ step }}
                     </li>
                 </ol>
+            </CardContent>
+        </Card>
+
+        <!-- Was it useful? -->
+        <Card data-test="report-feedback">
+            <CardHeader>
+                <CardTitle class="text-base">Este feedback foi útil?</CardTitle>
+                <CardDescription>
+                    Sua resposta ajuda a melhorar os relatórios.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div
+                    v-if="!editingFeedback && evaluation.userFeedback"
+                    class="flex flex-wrap items-center gap-3 text-sm"
+                    role="status"
+                >
+                    <span>
+                        Você marcou como
+                        <strong>{{
+                            evaluation.userFeedback.useful
+                                ? 'útil'
+                                : 'pouco útil'
+                        }}</strong
+                        >. Obrigado!
+                    </span>
+                    <Button
+                        variant="link"
+                        size="sm"
+                        class="h-auto p-0"
+                        @click="editingFeedback = true"
+                    >
+                        Mudar resposta
+                    </Button>
+                </div>
+                <form v-else class="space-y-3" @submit.prevent="sendFeedback">
+                    <div
+                        class="flex flex-wrap gap-2"
+                        role="radiogroup"
+                        aria-label="Este feedback foi útil?"
+                    >
+                        <Button
+                            type="button"
+                            role="radio"
+                            :aria-checked="feedbackForm.useful === true"
+                            :variant="
+                                feedbackForm.useful === true
+                                    ? 'default'
+                                    : 'outline'
+                            "
+                            data-test="feedback-useful"
+                            @click="feedbackForm.useful = true"
+                        >
+                            <ThumbsUp />
+                            Sim, foi útil
+                        </Button>
+                        <Button
+                            type="button"
+                            role="radio"
+                            :aria-checked="feedbackForm.useful === false"
+                            :variant="
+                                feedbackForm.useful === false
+                                    ? 'default'
+                                    : 'outline'
+                            "
+                            data-test="feedback-not-useful"
+                            @click="feedbackForm.useful = false"
+                        >
+                            <ThumbsDown />
+                            Não muito
+                        </Button>
+                    </div>
+                    <div
+                        v-if="feedbackForm.useful !== null"
+                        class="space-y-1.5"
+                    >
+                        <label
+                            for="feedback-comment"
+                            class="text-sm font-medium"
+                        >
+                            Quer contar o porquê? (opcional)
+                        </label>
+                        <textarea
+                            id="feedback-comment"
+                            v-model="feedbackForm.comment"
+                            rows="3"
+                            maxlength="500"
+                            class="w-full rounded-md border border-input bg-transparent px-3 py-2 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-sm dark:bg-input/30"
+                            data-test="feedback-comment"
+                        />
+                        <InputError
+                            :message="
+                                feedbackForm.errors.comment ??
+                                feedbackForm.errors.useful
+                            "
+                        />
+                    </div>
+                    <Button
+                        type="submit"
+                        :disabled="
+                            feedbackForm.useful === null ||
+                            feedbackForm.processing
+                        "
+                        data-test="send-feedback"
+                    >
+                        <Spinner v-if="feedbackForm.processing" />
+                        Enviar avaliação
+                    </Button>
+                </form>
             </CardContent>
         </Card>
 

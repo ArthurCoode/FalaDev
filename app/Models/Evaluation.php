@@ -21,11 +21,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property list<array{point: string, evidence: string, position: int, action: string}> $improvements
  * @property list<array{original: string, suggestion: string, explanation: string, position: int}> $english_feedback
  * @property list<string> $next_steps
+ * @property bool|null $user_found_useful
+ * @property string|null $user_comment
+ * @property CarbonImmutable|null $user_rated_at
  * @property array<string, mixed>|null $metadata
  * @property CarbonImmutable|null $created_at
  * @property CarbonImmutable|null $updated_at
  */
-#[Fillable(['evaluator', 'overall_score', 'summary', 'dimensions', 'strengths', 'improvements', 'english_feedback', 'next_steps', 'metadata'])]
+#[Fillable(['evaluator', 'overall_score', 'summary', 'dimensions', 'strengths', 'improvements', 'english_feedback', 'next_steps', 'metadata', 'user_found_useful', 'user_comment', 'user_rated_at'])]
 class Evaluation extends Model
 {
     /**
@@ -43,6 +46,8 @@ class Evaluation extends Model
             'english_feedback' => 'array',
             'next_steps' => 'array',
             'metadata' => 'array',
+            'user_found_useful' => 'boolean',
+            'user_rated_at' => 'datetime',
         ];
     }
 

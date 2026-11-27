@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Enums\InterviewStatus;
+use App\Enums\PilotEventType;
 use App\Interview\InterviewFlow;
 use App\Models\InterviewTurn;
+use App\Models\PilotEvent;
 use App\Speech\Contracts\SpeechToText;
 use App\Speech\Exceptions\TranscriptionFailed;
 use Illuminate\Http\JsonResponse;
@@ -52,6 +54,7 @@ class InterviewTurnController extends Controller
             $transcript = $stt->transcribe($file->getRealPath(), (string) $file->getMimeType());
         } catch (TranscriptionFailed $e) {
             report($e);
+            PilotEvent::record(PilotEventType::TranscriptionFailed, $turn->session->user_id, $turn->session->id);
 
             return response()->json(['message' => 'Não foi possível transcrever agora.'], 503);
         }

@@ -3,8 +3,10 @@
 namespace App\Jobs;
 
 use App\Enums\InterviewStatus;
+use App\Enums\PilotEventType;
 use App\Evaluation\Contracts\Evaluator;
 use App\Models\InterviewSession;
+use App\Models\PilotEvent;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
@@ -41,6 +43,7 @@ class EvaluateInterview implements ShouldQueue
             $result = $evaluator->evaluate($session);
         } catch (Throwable $e) {
             report($e);
+            PilotEvent::record(PilotEventType::EvaluationFailed, $session->user_id, $session->id);
             $this->markFailed($session);
 
             return;

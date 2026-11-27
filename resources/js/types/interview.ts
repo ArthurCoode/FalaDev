@@ -101,4 +101,6 @@ export type InterviewEvaluation = {
         position: number;
     }>;
     nextSteps: string[];
+    /** "Este feedback foi útil?", once answered. */
+    userFeedback: { useful: boolean; comment: string | null } | null;
 };

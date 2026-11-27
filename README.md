@@ -82,6 +82,32 @@ Os testes nunca chamam provedores reais: `Http::preventStrayRequests()` em `test
 
 O teste de microfone roda só no navegador (`resources/js/composables/useAudioRecorder.ts`): pede permissão no clique, mostra o volume ao vivo, grava localmente e libera o microfone ao terminar. Nada é enviado ao servidor.
 
+## Piloto (métricas e testes no celular)
+
+**Métricas:** `/pilot/metrics` mostra, por período (7, 30, 90 dias ou tudo):
+
+- o funil de sessões, em que cada etapa está contida na anterior;
+- tempo até o relatório, duração das entrevistas e quem voltou;
+- testes de microfone, com a distribuição do volume máximo medido para calibrar `MIN_PEAK_LEVEL` em `resources/js/lib/microphone.ts`;
+- falhas de transcrição e de relatório;
+- a avaliação "Este feedback foi útil?", com os comentários.
+
+Só as contas listadas em `FALADEV_PILOT_ADMINS` (e-mails separados por vírgula) veem o item no menu e a página; para as outras, a página responde 404.
+
+**Eventos técnicos:** `pilot_events` guarda o resultado do teste de microfone (aprovado e pico), os códigos de erro do microfone e as falhas de transcrição e de relatório. Nunca guarda áudio nem texto das respostas. O aviso de dados da configuração menciona isso.
+
+**Testar no celular:** o navegador só libera o microfone em https, então use um túnel. Em ambiente local o app confia nos cabeçalhos do proxy (`TrustProxies`, no `AppServiceProvider`) e gera links https.
+
+1. Gere os assets e rode sem o Vite, porque o celular não alcança o servidor do Vite:
+    ```bash
+    npm run build          # sem o "composer run dev" rodando (ele usa o Vite)
+    php artisan serve      # em outro terminal: php artisan queue:listen
+    ```
+2. Instale o [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) e rode `cloudflared tunnel --url http://127.0.0.1:8000`.
+3. Abra no celular o endereço `https://….trycloudflare.com` que aparece no terminal.
+
+Enquanto o túnel estiver aberto, o ambiente de dev fica acessível pela internet. Use só a conta de dev e feche o túnel ao terminar.
+
 ## Padrões de interface
 
 Telas novas usam os componentes do FalaDev em vez de montar a estrutura à mão:
