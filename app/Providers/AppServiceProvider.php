@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
+use App\Speech\Contracts\TextToSpeech;
+use App\Speech\FakeTextToSpeech;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use InvalidArgumentException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -15,7 +18,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Speech providers are swappable through config/faladev.php.
+        $this->app->bind(TextToSpeech::class, fn () => match (config('faladev.speech.tts')) {
+            'fake' => new FakeTextToSpeech,
+            default => throw new InvalidArgumentException('Unsupported TTS driver: '.config('faladev.speech.tts')),
+        });
     }
 
     /**
