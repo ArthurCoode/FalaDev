@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\InterviewSession;
+use App\Services\InterviewUsage;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -14,7 +15,7 @@ class DashboardController extends Controller
     /**
      * Home screen: start a new interview, see recent ones and remaining usage.
      */
-    public function __invoke(Request $request): Response
+    public function __invoke(Request $request, InterviewUsage $usage): Response
     {
         $user = $request->user();
 
@@ -33,17 +34,9 @@ class DashboardController extends Controller
                 'createdAt' => $session->created_at?->toIso8601String(),
             ]);
 
-        // Until usage_records exists (step 4), a session counts once it is created.
-        $usedThisMonth = $user->interviewSessions()
-            ->where('created_at', '>=', now()->startOfMonth())
-            ->count();
-
         return Inertia::render('Dashboard', [
             'recentSessions' => $recentSessions,
-            'usage' => [
-                'used' => $usedThisMonth,
-                'limit' => config('faladev.usage.monthly_session_limit'),
-            ],
+            'usage' => $usage->summary($user),
         ]);
     }
 }

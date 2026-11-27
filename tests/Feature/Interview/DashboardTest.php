@@ -29,19 +29,21 @@ test('the dashboard lists only the five most recent sessions of the current user
             ->where('recentSessions.0.statusLabel', 'Em configuração'));
 });
 
-test('monthly usage counts only the current user sessions created this month', function () {
+test('monthly usage counts only sessions the current user started this month', function () {
     config(['faladev.usage.monthly_session_limit' => 3]);
     $user = User::factory()->create();
 
-    InterviewSession::factory()->for($user)->count(2)->create();
-    InterviewSession::factory()->for($user)->create(['created_at' => now()->subMonthNoOverflow()->startOfMonth()]);
-    InterviewSession::factory()->create();
+    InterviewSession::factory()->for($user)->count(2)->create(['started_at' => now()]);
+    InterviewSession::factory()->for($user)->create(); // configured, never started
+    InterviewSession::factory()->for($user)->create(['started_at' => now()->subMonthNoOverflow()->startOfMonth()]);
+    InterviewSession::factory()->create(['started_at' => now()]); // someone else
 
     $this->actingAs($user)
         ->get(route('dashboard'))
         ->assertInertia(fn (Assert $page) => $page
             ->where('usage.used', 2)
-            ->where('usage.limit', 3));
+            ->where('usage.limit', 3)
+            ->where('usage.remaining', 1));
 });
 
 test('a new user sees an empty history', function () {

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Head, usePage } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { History, Mic } from '@lucide/vue';
 import { computed } from 'vue';
+import PageHeader from '@/components/PageHeader.vue';
 import { Button } from '@/components/ui/button';
 import {
     Card,
@@ -11,6 +12,7 @@ import {
     CardTitle,
 } from '@/components/ui/card';
 import { dashboard } from '@/routes';
+import { create, show } from '@/routes/interviews';
 import type {
     InterviewSessionSummary,
     InterviewStatus,
@@ -36,9 +38,6 @@ const props = defineProps<{
 const page = usePage();
 const firstName = computed(() => page.props.auth.user.name.split(' ')[0]);
 
-const remaining = computed(() =>
-    Math.max(props.usage.limit - props.usage.used, 0),
-);
 const usagePercent = computed(() =>
     props.usage.limit > 0
         ? Math.min((props.usage.used / props.usage.limit) * 100, 100)
@@ -77,14 +76,10 @@ const formatDate = (iso: string | null): string =>
     <Head title="Início" />
 
     <div class="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-        <header class="space-y-1">
-            <h1 class="text-2xl font-semibold tracking-tight">
-                Olá, {{ firstName }}
-            </h1>
-            <p class="text-sm text-muted-foreground">
-                Pratique entrevistas técnicas em inglês, por voz e com IA.
-            </p>
-        </header>
+        <PageHeader
+            :title="`Olá, ${firstName}`"
+            description="Pratique entrevistas técnicas em inglês, por voz e com IA."
+        />
 
         <div class="grid gap-4 md:grid-cols-3">
             <Card class="md:col-span-2">
@@ -101,14 +96,20 @@ const formatDate = (iso: string | null): string =>
                     </CardDescription>
                 </CardHeader>
                 <CardContent class="flex flex-col items-start gap-2">
-                    <!-- Enabled once the interview setup screen exists (step 2). -->
-                    <Button size="lg" disabled data-test="new-interview-button">
-                        Nova entrevista
+                    <Button
+                        v-if="usage.remaining > 0"
+                        size="lg"
+                        as-child
+                        data-test="new-interview-button"
+                    >
+                        <Link :href="create()">Nova entrevista</Link>
                     </Button>
-                    <p class="text-xs text-muted-foreground">
-                        A configuração da entrevista ainda está em
-                        desenvolvimento.
-                    </p>
+                    <template v-else>
+                        <Button size="lg" disabled>Nova entrevista</Button>
+                        <p class="text-xs text-muted-foreground">
+                            Você atingiu o limite deste mês.
+                        </p>
+                    </template>
                 </CardContent>
             </Card>
 
@@ -116,7 +117,8 @@ const formatDate = (iso: string | null): string =>
                 <CardHeader>
                     <CardTitle>Uso neste mês</CardTitle>
                     <CardDescription>
-                        Entrevistas disponíveis durante o período de testes.
+                        Contam as entrevistas iniciadas, não as apenas
+                        configuradas.
                     </CardDescription>
                 </CardHeader>
                 <CardContent class="space-y-3">
@@ -142,9 +144,13 @@ const formatDate = (iso: string | null): string =>
                         />
                     </div>
                     <p class="text-xs text-muted-foreground">
-                        <template v-if="remaining > 0">
-                            Restam {{ remaining }}
-                            {{ remaining === 1 ? 'entrevista' : 'entrevistas' }}
+                        <template v-if="usage.remaining > 0">
+                            Restam {{ usage.remaining }}
+                            {{
+                                usage.remaining === 1
+                                    ? 'entrevista'
+                                    : 'entrevistas'
+                            }}
                             neste mês.
                         </template>
                         <template v-else>
@@ -183,26 +189,33 @@ const formatDate = (iso: string | null): string =>
                     <li
                         v-for="session in recentSessions"
                         :key="session.id"
-                        class="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                         data-test="recent-session"
                     >
-                        <div>
-                            <p class="font-medium">{{ session.category }}</p>
-                            <p class="text-sm text-muted-foreground">
-                                {{ session.level }} · {{ session.duration }} ·
-                                {{ formatDate(session.createdAt) }}
-                            </p>
-                        </div>
-                        <span
-                            class="inline-flex items-center gap-2 text-sm text-muted-foreground"
+                        <Link
+                            :href="show(session.id)"
+                            class="flex flex-col gap-1 px-4 py-3 transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none sm:flex-row sm:items-center sm:justify-between"
                         >
+                            <div>
+                                <p class="font-medium">
+                                    {{ session.category }}
+                                </p>
+                                <p class="text-sm text-muted-foreground">
+                                    {{ session.level }} ·
+                                    {{ session.duration }} ·
+                                    {{ formatDate(session.createdAt) }}
+                                </p>
+                            </div>
                             <span
-                                class="size-2 rounded-full"
-                                :class="statusDotClass(session.status)"
-                                aria-hidden="true"
-                            />
-                            {{ session.statusLabel }}
-                        </span>
+                                class="inline-flex items-center gap-2 text-sm text-muted-foreground"
+                            >
+                                <span
+                                    class="size-2 rounded-full"
+                                    :class="statusDotClass(session.status)"
+                                    aria-hidden="true"
+                                />
+                                {{ session.statusLabel }}
+                            </span>
+                        </Link>
                     </li>
                 </ul>
             </Card>
