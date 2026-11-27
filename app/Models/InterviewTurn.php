@@ -2,12 +2,12 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Database\Factories\InterviewTurnFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -16,12 +16,12 @@ use Illuminate\Support\Carbon;
  * @property string $question
  * @property bool $is_follow_up
  * @property string|null $answer_transcript
- * @property Carbon|null $answered_at
+ * @property CarbonImmutable|null $answered_at
  * @property bool $hint_used
  * @property int $repeat_count
  * @property array<string, mixed>|null $metadata
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  */
 #[Fillable(['position', 'question', 'is_follow_up'])]
 class InterviewTurn extends Model

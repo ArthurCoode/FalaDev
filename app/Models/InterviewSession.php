@@ -7,13 +7,13 @@ use App\Enums\InterviewDuration;
 use App\Enums\InterviewLevel;
 use App\Enums\InterviewStatus;
 use App\Exceptions\InvalidInterviewTransition;
+use Carbon\CarbonImmutable;
 use Database\Factories\InterviewSessionFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Carbon;
 
 /**
  * @property int $id
@@ -22,10 +22,10 @@ use Illuminate\Support\Carbon;
  * @property InterviewLevel $level
  * @property InterviewDuration $duration_minutes
  * @property InterviewStatus $status
- * @property Carbon|null $started_at
- * @property Carbon|null $completed_at
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonImmutable|null $started_at
+ * @property CarbonImmutable|null $completed_at
+ * @property CarbonImmutable|null $created_at
+ * @property CarbonImmutable|null $updated_at
  */
 #[Fillable(['category', 'level', 'duration_minutes'])]
 class InterviewSession extends Model
