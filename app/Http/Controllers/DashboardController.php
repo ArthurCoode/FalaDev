@@ -34,7 +34,16 @@ class DashboardController extends Controller
                 'createdAt' => $session->created_at?->toIso8601String(),
             ]);
 
+        $inProgress = $user->interviewInProgress();
+
         return Inertia::render('Dashboard', [
+            // Shown as "Continuar entrevista" instead of "Nova entrevista".
+            'inProgress' => $inProgress ? [
+                'id' => $inProgress->id,
+                'category' => $inProgress->category->label(),
+                'level' => $inProgress->level->label(),
+                'startedAt' => $inProgress->started_at?->toIso8601String(),
+            ] : null,
             'recentSessions' => $recentSessions,
             'usage' => $usage->summary($user),
         ]);

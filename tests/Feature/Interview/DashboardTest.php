@@ -65,3 +65,22 @@ test('server messages are shown in Portuguese', function () {
     $this->post(route('register.store'), [])
         ->assertSessionHasErrors(['email' => 'O campo e-mail é obrigatório.']);
 });
+
+test('the dashboard offers to continue the running interview', function () {
+    $running = InterviewSession::factory()->inProgress()->create();
+
+    $this->actingAs($running->user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('inProgress.id', $running->id)
+            ->where('inProgress.category', $running->category->label()));
+});
+
+test('without a running interview the dashboard offers a new one', function () {
+    $user = User::factory()->create();
+    InterviewSession::factory()->for($user)->completed()->create();
+
+    $this->actingAs($user)
+        ->get(route('dashboard'))
+        ->assertInertia(fn (Assert $page) => $page->where('inProgress', null));
+});

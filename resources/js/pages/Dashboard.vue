@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { History, Mic } from '@lucide/vue';
+import { History, Mic, Play } from '@lucide/vue';
 import { computed } from 'vue';
 import PageHeader from '@/components/PageHeader.vue';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,13 @@ defineOptions({
 });
 
 const props = defineProps<{
+    /** The running interview; while it exists no new one can start. */
+    inProgress: {
+        id: number;
+        category: string;
+        level: string;
+        startedAt: string | null;
+    } | null;
     recentSessions: InterviewSessionSummary[];
     usage: UsageSummary;
 }>();
@@ -82,7 +89,44 @@ const formatDate = (iso: string | null): string =>
         />
 
         <div class="grid gap-4 md:grid-cols-3">
-            <Card class="md:col-span-2">
+            <Card
+                v-if="inProgress"
+                class="border-voice md:col-span-2"
+                data-test="interview-in-progress"
+            >
+                <CardHeader>
+                    <CardTitle class="flex items-center gap-2">
+                        <span class="relative flex size-3" aria-hidden="true">
+                            <span
+                                class="absolute inline-flex size-full animate-ping rounded-full bg-voice opacity-75 motion-reduce:animate-none"
+                            />
+                            <span
+                                class="relative inline-flex size-3 rounded-full bg-voice"
+                            />
+                        </span>
+                        Entrevista em andamento
+                    </CardTitle>
+                    <CardDescription>
+                        {{ inProgress.category }} · {{ inProgress.level }}. Suas
+                        respostas enviadas estão salvas; continue de onde parou.
+                        Para começar outra, conclua ou encerre esta.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Button
+                        size="lg"
+                        as-child
+                        data-test="continue-interview-button"
+                    >
+                        <Link :href="show(inProgress.id)">
+                            <Play />
+                            Continuar entrevista
+                        </Link>
+                    </Button>
+                </CardContent>
+            </Card>
+
+            <Card v-else class="md:col-span-2">
                 <CardHeader>
                     <CardTitle class="flex items-center gap-2">
                         <Mic class="size-5 text-voice" aria-hidden="true" />
