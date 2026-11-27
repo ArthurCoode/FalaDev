@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
-import { LayoutGrid, Mic } from '@lucide/vue';
+import { History, LayoutGrid, Mic } from '@lucide/vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
 import NavUser from '@/components/NavUser.vue';
@@ -14,7 +14,10 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
-import { create as createInterview } from '@/routes/interviews';
+import {
+    create as createInterview,
+    index as interviewHistory,
+} from '@/routes/interviews';
 import type { NavItem } from '@/types';
 
 const mainNavItems: NavItem[] = [
@@ -27,6 +30,11 @@ const mainNavItems: NavItem[] = [
         title: 'Nova entrevista',
         href: createInterview(),
         icon: Mic,
+    },
+    {
+        title: 'Histórico',
+        href: interviewHistory(),
+        icon: History,
     },
 ];
 </script>
