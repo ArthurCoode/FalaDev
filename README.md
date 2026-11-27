@@ -10,6 +10,8 @@ Laravel 13 (PHP 8.3+) · Inertia 3 + Vue 3 + TypeScript · Tailwind 4 · Postgre
 
 Pré-requisitos: PHP 8.3+ com as extensões `pdo_pgsql` e `pgsql` habilitadas no `php.ini`, Composer, Node 20+ e Docker.
 
+No Windows, o PHP precisa de um pacote de certificados para chamar APIs por HTTPS (ElevenLabs): configure `curl.cainfo` e `openssl.cafile` no `php.ini` apontando para um `cacert.pem`. Sem isso, as chamadas falham com "cURL error 60".
+
 ```bash
 composer install
 npm install
@@ -51,7 +53,11 @@ Para a segunda opção, crie o banco uma vez:
 
 Os provedores ficam atrás de interfaces em `app/Speech`, escolhidas em `config/faladev.php`:
 
-- `TextToSpeech` (`FALADEV_TTS_DRIVER`). Hoje só existe o driver `fake`, que devolve um sinal sonoro em WAV, não a frase falada. Serve para desenvolver o fluxo sem conta em provedor; a tela avisa quando ele está ativo.
+- `TextToSpeech` (`FALADEV_TTS_DRIVER`):
+  - `elevenlabs`: voz real. Precisa de `ELEVENLABS_API_KEY` no `.env` (nunca no código nem no `.env.example`). Voz, modelo e formato ficam em `config/services.php` (padrão: voz "Matilda", modelo `eleven_v4_turbo`, MP3 64 kbps).
+  - `fake`: sinal sonoro em WAV, sem conta. Usado nos testes automatizados; a tela avisa quando ele está ativo.
+- A frase de teste é gerada uma vez e guardada em cache por 30 dias (cada chamada gasta cota do provedor). Falhas não vão para o cache.
+- Os testes nunca chamam provedores reais: `Http::preventStrayRequests()` em `tests/TestCase.php` e `FALADEV_TTS_DRIVER=fake` no `phpunit.xml`.
 - STT (fala para texto) ainda não existe; entra com a gravação das respostas.
 
 O teste de microfone roda só no navegador (`resources/js/composables/useAudioRecorder.ts`): pede permissão no clique, mostra o volume ao vivo, grava localmente e libera o microfone ao terminar. Nada é enviado ao servidor.
