@@ -59,6 +59,14 @@ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
     }
 
     /**
+     * @return HasMany<UsageRecord, $this>
+     */
+    public function usageRecords(): HasMany
+    {
+        return $this->hasMany(UsageRecord::class);
+    }
+
+    /**
      * The interview currently running, if any. Only one runs at a time.
      */
     public function interviewInProgress(): ?InterviewSession

@@ -10,17 +10,25 @@ Route::inertia('/', 'Welcome')->name('home');
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 
+    Route::get('interviews', [InterviewSessionController::class, 'index'])->name('interviews.index');
     Route::get('interviews/create', [InterviewSessionController::class, 'create'])->name('interviews.create');
     Route::post('interviews', [InterviewSessionController::class, 'store'])->name('interviews.store');
     Route::get('interviews/{interviewSession}', [InterviewSessionController::class, 'show'])
         ->whereNumber('interviewSession')
         ->name('interviews.show');
+    Route::delete('interviews/{interviewSession}', [InterviewSessionController::class, 'destroy'])
+        ->whereNumber('interviewSession')
+        ->name('interviews.destroy');
     Route::post('interviews/{interviewSession}/ready', [InterviewSessionController::class, 'markReady'])
         ->whereNumber('interviewSession')
         ->name('interviews.ready');
     Route::post('interviews/{interviewSession}/start', [InterviewSessionController::class, 'start'])
         ->whereNumber('interviewSession')
         ->name('interviews.start');
+    Route::post('interviews/{interviewSession}/evaluation', [InterviewSessionController::class, 'retryEvaluation'])
+        ->whereNumber('interviewSession')
+        ->middleware('throttle:10,1')
+        ->name('interviews.evaluation.retry');
     Route::post('interviews/{interviewSession}/finish', [InterviewSessionController::class, 'finish'])
         ->whereNumber('interviewSession')
         ->name('interviews.finish');

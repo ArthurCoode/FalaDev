@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Evaluation\Contracts\Evaluator;
+use App\Evaluation\FakeEvaluator;
 use App\Interview\Contracts\Interviewer;
 use App\Interview\FakeInterviewer;
 use App\Speech\Contracts\SpeechToText;
@@ -46,6 +48,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(Interviewer::class, fn () => match (config('faladev.interview.interviewer')) {
             'fake' => new FakeInterviewer,
             default => throw new InvalidArgumentException('Unsupported interviewer driver: '.config('faladev.interview.interviewer')),
+        });
+
+        $this->app->bind(Evaluator::class, fn () => match (config('faladev.evaluation.evaluator')) {
+            'fake' => new FakeEvaluator,
+            default => throw new InvalidArgumentException('Unsupported evaluator driver: '.config('faladev.evaluation.evaluator')),
         });
 
         $this->app->bind(PrerecordedPhrases::class, fn () => new PrerecordedPhrases(

@@ -50,8 +50,10 @@ Para a segunda opção, crie o banco uma vez:
 - `app/Http/Controllers/InterviewTurnController`: ações na pergunta atual (transcrever a gravação, enviar a resposta revisada, repetir a pergunta).
 - `app/Interview/InterviewFlow`: regras da entrevista por turnos. Cada escrita trava a linha da sessão; repetir uma ação já feita (clique duplo, reenvio após queda de conexão) não tem efeito. Ao enviar uma resposta, o entrevistador decide a próxima pergunta ou encerra. Se o tempo acabou, a resposta em andamento ainda conta e depois a entrevista termina.
 - `app/Interview/Contracts/Interviewer`: decide a próxima pergunta. `FakeInterviewer` segue um roteiro fixo por categoria: 3 perguntas principais (15 min) ou 4 (30 min), cada uma seguida de uma pergunta de aprofundamento. Ele não lê as respostas nem adapta ao nível; isso fica para o LLM.
-- `app/Services/InterviewUsage`: limite mensal. Só contam entrevistas **iniciadas** (`started_at`); rascunhos não consomem o limite.
-- **Estados da sessão:** `InterviewStatus::canTransitionTo()` define as transições permitidas e `InterviewSession::transitionTo()` é o único jeito de mudar o status. Por enquanto: `draft → ready` (testes de áudio concluídos), `ready → draft` (configuração alterada), `ready → asking` (entrevista iniciada) e `asking → completed` (última pergunta respondida, tempo esgotado ou encerramento pelo usuário). Gravar, transcrever e revisar acontecem no navegador e não viram estado no servidor, porque nada é salvo até o envio.
+- `app/Services/InterviewUsage`: limite mensal. Só contam entrevistas **iniciadas**; rascunhos não consomem o limite. Cada início grava um registro em `usage_records`, que não é apagado junto com a sessão: apagar uma entrevista não devolve a cota.
+- **Histórico e exclusão:** `/interviews` lista todas as sessões do usuário (15 por página). Na página da sessão, "Apagar entrevista" remove a sessão, as perguntas, as respostas e o relatório, depois de confirmação.
+- **Relatório (`app/Evaluation`):** ao terminar uma entrevista com pelo menos uma resposta, a sessão vai para `evaluating` e o job `EvaluateInterview` roda na fila. Sucesso leva a `report_ready`; qualquer falha leva a `failed_retryable`, com a transcrição preservada e o botão "Tentar novamente". A página consulta o servidor a cada 3 s enquanto o relatório é preparado. `Rubric` define as dimensões (a técnica muda com a categoria) e a escala de 1 a 5. `EvaluationResult` rejeita notas fora da escala. O `FakeEvaluator` dá nota fixa 3, cita trechos das respostas e deixa claro, no relatório e na tela, que é simulado.
+- **Estados da sessão:** `InterviewStatus::canTransitionTo()` define as transições permitidas e `InterviewSession::transitionTo()` é o único jeito de mudar o status. Por enquanto: `draft → ready` (testes de áudio concluídos), `ready → draft` (configuração alterada), `ready → asking` (entrevista iniciada), `asking → completed` (última pergunta respondida, tempo esgotado ou encerramento pelo usuário), `completed → evaluating` (há respostas), `evaluating → report_ready | failed_retryable` e `failed_retryable → evaluating` (nova tentativa). Gravar, transcrever e revisar acontecem no navegador e não viram estado no servidor, porque nada é salvo até o envio.
 
 ## Voz (TTS/STT)
 
@@ -73,6 +75,8 @@ php artisan faladev:record-phrases             # grava só as que faltam
 **Transcrição (STT):** interface `SpeechToText` (`FALADEV_STT_DRIVER`). Por enquanto só existe o `fake`, que ignora o áudio e devolve um texto simulado para a pessoa substituir na revisão; a tela avisa. O áudio chega como upload temporário (até 5 MB, WebM/Ogg/MP4) e não é guardado. Nos metadados do turno ficam só contagem e latência da transcrição.
 
 **Entrevistador:** interface `Interviewer` (`FALADEV_INTERVIEWER_DRIVER`), hoje só `fake` (roteiro fixo, ver acima).
+
+**Avaliador:** interface `Evaluator` (`FALADEV_EVALUATOR_DRIVER`), hoje só `fake` (relatório simulado). O relatório é gerado pela fila, então o worker precisa estar rodando; `composer run dev` já inicia um.
 
 Os testes nunca chamam provedores reais: `Http::preventStrayRequests()` em `tests/TestCase.php` e drivers `fake` no `phpunit.xml`. Os testes das frases usam um diretório temporário (`fakePrerecordedPhrases()` em `tests/Pest.php`).
 

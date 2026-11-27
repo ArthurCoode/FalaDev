@@ -32,3 +32,11 @@ test('a ready session can start, and a running one can only complete', function 
         ->and(InterviewStatus::Asking->canTransitionTo(InterviewStatus::Ready))->toBeFalse()
         ->and(InterviewStatus::Completed->canTransitionTo(InterviewStatus::Asking))->toBeFalse();
 });
+
+test('a completed interview goes through evaluation, and a failed one can be retried', function () {
+    expect(InterviewStatus::Completed->canTransitionTo(InterviewStatus::Evaluating))->toBeTrue()
+        ->and(InterviewStatus::Evaluating->canTransitionTo(InterviewStatus::ReportReady))->toBeTrue()
+        ->and(InterviewStatus::Evaluating->canTransitionTo(InterviewStatus::FailedRetryable))->toBeTrue()
+        ->and(InterviewStatus::FailedRetryable->canTransitionTo(InterviewStatus::Evaluating))->toBeTrue()
+        ->and(InterviewStatus::Evaluating->canTransitionTo(InterviewStatus::Asking))->toBeFalse();
+});

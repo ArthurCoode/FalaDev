@@ -1,8 +1,19 @@
 <script setup lang="ts">
-import { Form, Head, Link } from '@inertiajs/vue3';
-import { CircleCheck, Flag, Mic, Play, Volume2 } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import { Form, Head, Link, usePoll } from '@inertiajs/vue3';
+import {
+    CircleAlert,
+    CircleCheck,
+    Flag,
+    Home,
+    Mic,
+    Play,
+    RotateCcw,
+    Volume2,
+} from '@lucide/vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import InputError from '@/components/InputError.vue';
+import DeleteInterviewDialog from '@/components/interview/DeleteInterviewDialog.vue';
+import EvaluationReport from '@/components/interview/EvaluationReport.vue';
 import MicrophoneCheck from '@/components/interview/MicrophoneCheck.vue';
 import SampleAudioCheck from '@/components/interview/SampleAudioCheck.vue';
 import type { SampleAudioState } from '@/components/interview/SampleAudioCheck.vue';
@@ -18,7 +29,9 @@ import {
 import { Spinner } from '@/components/ui/spinner';
 import { dashboard } from '@/routes';
 import { create, ready, start } from '@/routes/interviews';
+import { retry as retryEvaluation } from '@/routes/interviews/evaluation';
 import type {
+    InterviewEvaluation,
     InterviewerLine,
     InterviewSessionDetails,
     InterviewTurnDetails,
@@ -31,7 +44,29 @@ const props = defineProps<{
     /** Only filled once the interview is over. */
     turns: InterviewTurnDetails[];
     closing: InterviewerLine | null;
+    /** Only when the report is ready. */
+    evaluation: InterviewEvaluation | null;
+    scoreAnchors: Record<string, string>;
+    /** Setup of this interview, to prefill "Refazer entrevista". */
+    redoQuery: Record<string, string | number>;
 }>();
+
+// While the report is prepared in the background, ask the server again
+// every few seconds; stop as soon as the status changes.
+const poll = usePoll(
+    3000,
+    { only: ['session', 'evaluation'] },
+    { autoStart: false },
+);
+const isEvaluating = computed(() => props.session.status === 'evaluating');
+const hasAnswers = computed(() => props.turns.some((turn) => turn.answer));
+
+watch(isEvaluating, (evaluating) => (evaluating ? poll.start() : poll.stop()));
+onMounted(() => {
+    if (isEvaluating.value) {
+        poll.start();
+    }
+});
 
 defineOptions({
     layout: {
@@ -77,14 +112,15 @@ const details = computed(() => [
                 session.status === 'draft'
                     ? 'Faça os testes de áudio antes de começar.'
                     : closing
-                      ? 'Entrevista concluída.'
+                      ? 'Entrevista concluída. Veja o relatório e a transcrição.'
                       : 'Resumo da sua sessão.'
             "
         >
-            <template v-if="session.canEditSetup" #actions>
-                <Button variant="outline" as-child>
+            <template #actions>
+                <Button v-if="session.canEditSetup" variant="outline" as-child>
                     <Link :href="create()">Alterar configuração</Link>
                 </Button>
+                <DeleteInterviewDialog :session-id="session.id" />
             </template>
         </PageHeader>
 
@@ -226,11 +262,91 @@ const details = computed(() => [
                         “{{ closing.text }}”
                     </CardDescription>
                 </CardHeader>
-                <CardContent>
-                    <p class="text-sm text-muted-foreground">
-                        Suas respostas foram salvas. O relatório com notas e
-                        feedback ainda está em desenvolvimento; por enquanto,
-                        confira abaixo a transcrição da entrevista.
+                <CardContent class="flex flex-wrap gap-2">
+                    <Button as-child data-test="redo-interview">
+                        <Link :href="create({ query: redoQuery })">
+                            <RotateCcw />
+                            Refazer entrevista
+                        </Link>
+                    </Button>
+                    <Button variant="outline" as-child>
+                        <Link :href="dashboard()">
+                            <Home />
+                            Voltar ao início
+                        </Link>
+                    </Button>
+                </CardContent>
+            </Card>
+
+            <!-- Report -->
+            <Card v-if="session.status === 'evaluating'">
+                <CardContent
+                    class="flex items-center gap-3 text-sm"
+                    role="status"
+                    aria-live="polite"
+                >
+                    <Spinner />
+                    Preparando seu feedback… Isso costuma levar menos de um
+                    minuto. Você pode sair e voltar depois.
+                </CardContent>
+            </Card>
+
+            <Card v-else-if="session.status === 'failed_retryable'">
+                <CardContent class="space-y-3">
+                    <p class="flex items-start gap-2 text-sm" role="alert">
+                        <CircleAlert
+                            class="mt-0.5 size-5 shrink-0 text-destructive"
+                            aria-hidden="true"
+                        />
+                        Não foi possível preparar o relatório agora. Sua
+                        entrevista e a transcrição continuam salvas.
+                    </p>
+                    <Form
+                        v-bind="retryEvaluation.form(session.id)"
+                        v-slot="{ processing }"
+                    >
+                        <Button
+                            type="submit"
+                            :disabled="processing"
+                            data-test="retry-evaluation"
+                        >
+                            <Spinner v-if="processing" />
+                            <RotateCcw v-else />
+                            Tentar novamente
+                        </Button>
+                    </Form>
+                </CardContent>
+            </Card>
+
+            <EvaluationReport
+                v-else-if="evaluation"
+                :evaluation="evaluation"
+                :score-anchors="scoreAnchors"
+            />
+
+            <Card v-else-if="session.status === 'completed'">
+                <CardContent class="space-y-3 text-sm">
+                    <template v-if="hasAnswers">
+                        <p class="text-muted-foreground">
+                            Esta entrevista ainda não tem relatório.
+                        </p>
+                        <Form
+                            v-bind="retryEvaluation.form(session.id)"
+                            v-slot="{ processing }"
+                        >
+                            <Button
+                                type="submit"
+                                :disabled="processing"
+                                data-test="generate-evaluation"
+                            >
+                                <Spinner v-if="processing" />
+                                Gerar relatório
+                            </Button>
+                        </Form>
+                    </template>
+                    <p v-else class="text-muted-foreground">
+                        Nenhuma resposta foi enviada nesta entrevista, então não
+                        há relatório.
                     </p>
                 </CardContent>
             </Card>

@@ -6,6 +6,7 @@ use App\Enums\InterviewCategory;
 use App\Enums\InterviewDuration;
 use App\Enums\InterviewLevel;
 use App\Enums\InterviewStatus;
+use App\Evaluation\Rubric;
 use App\Http\Requests\Interview\StoreInterviewSessionRequest;
 use App\Interview\InterviewFlow;
 use App\Models\InterviewSession;
@@ -20,6 +21,37 @@ use Inertia\Response;
 
 class InterviewSessionController extends Controller
 {
+    private const HISTORY_PER_PAGE = 15;
+
+    /**
+     * History: every session of the user, newest first.
+     */
+    public function index(Request $request): Response
+    {
+        $sessions = $request->user()->interviewSessions()
+            ->latest()
+            ->latest('id')
+            ->paginate(self::HISTORY_PER_PAGE)
+            ->through(fn (InterviewSession $session) => $session->summary());
+
+        return Inertia::render('interviews/Index', [
+            'sessions' => $sessions,
+        ]);
+    }
+
+    /**
+     * Deletes a session with its questions, answers and report (section 9).
+     * Usage records stay, so deleting never gives the allowance back.
+     */
+    public function destroy(Request $request, int $interviewSession): RedirectResponse
+    {
+        $this->findOwnSession($request, $interviewSession)->delete();
+
+        Inertia::flash('toast', ['type' => 'success', 'message' => 'Entrevista apagada.']);
+
+        return to_route('interviews.index');
+    }
+
     /**
      * Interview setup: category, level, duration and the data notice.
      */
@@ -52,7 +84,7 @@ class InterviewSessionController extends Controller
                 'category' => $draft->category->value,
                 'level' => $draft->level->value,
                 'duration_minutes' => $draft->duration_minutes->value,
-            ] : null,
+            ] : $this->setupFromQuery($request),
             'usage' => $usage->summary($request->user()),
         ]);
     }
@@ -90,7 +122,7 @@ class InterviewSessionController extends Controller
 
     /**
      * Session page: the pre-interview checks, the interview itself while it
-     * runs, and the transcript once it is over.
+     * runs, and the transcript and report once it is over.
      */
     public function show(Request $request, int $interviewSession, PrerecordedPhrases $phrases, InterviewFlow $flow): Response
     {
@@ -112,7 +144,28 @@ class InterviewSessionController extends Controller
                 ? $session->turns->map(fn (InterviewTurn $turn) => $this->turnDetails($turn, $phrases))->all()
                 : [],
             'closing' => $isFinished ? ['text' => $closing, 'audioUrl' => $phrases->url($closing)] : null,
+            // Polled by the page while the report is being prepared.
+            'evaluation' => $session->status === InterviewStatus::ReportReady
+                ? $this->evaluationDetails($session)
+                : null,
+            'scoreAnchors' => Rubric::anchors(),
+            // "Refazer": same setup, prefilled on the setup page.
+            'redoQuery' => [
+                'category' => $session->category->value,
+                'level' => $session->level->value,
+                'duration_minutes' => $session->duration_minutes->value,
+            ],
         ]);
+    }
+
+    /**
+     * "Tentar novamente" after a failed report.
+     */
+    public function retryEvaluation(Request $request, int $interviewSession, InterviewFlow $flow): RedirectResponse
+    {
+        $flow->retryEvaluation($this->findOwnSession($request, $interviewSession));
+
+        return to_route('interviews.show', $interviewSession);
     }
 
     /**
@@ -161,18 +214,58 @@ class InterviewSessionController extends Controller
     }
 
     /**
+     * @return array<string, mixed>|null
+     */
+    private function evaluationDetails(InterviewSession $session): ?array
+    {
+        $evaluation = $session->evaluation;
+
+        if ($evaluation === null) {
+            return null;
+        }
+
+        return [
+            'isSimulated' => $evaluation->evaluator === 'fake',
+            'overallScore' => $evaluation->overall_score,
+            'summary' => $evaluation->summary,
+            'dimensions' => $evaluation->dimensions,
+            'strengths' => $evaluation->strengths,
+            'improvements' => $evaluation->improvements,
+            'englishFeedback' => $evaluation->english_feedback,
+            'nextSteps' => $evaluation->next_steps,
+        ];
+    }
+
+    /**
+     * Valid setup values from the query string ("Refazer entrevista"),
+     * ignoring anything that is not a known option.
+     *
+     * @return array{category: string, level: string, duration_minutes: int}|null
+     */
+    private function setupFromQuery(Request $request): ?array
+    {
+        $category = InterviewCategory::tryFrom((string) $request->query('category'));
+        $level = InterviewLevel::tryFrom((string) $request->query('level'));
+        $duration = InterviewDuration::tryFrom((int) $request->query('duration_minutes'));
+
+        if ($category === null || $level === null || $duration === null) {
+            return null;
+        }
+
+        return [
+            'category' => $category->value,
+            'level' => $level->value,
+            'duration_minutes' => $duration->value,
+        ];
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function sessionDetails(InterviewSession $session): array
     {
         return [
-            'id' => $session->id,
-            'category' => $session->category->label(),
-            'level' => $session->level->label(),
-            'duration' => $session->duration_minutes->label(),
-            'status' => $session->status->value,
-            'statusLabel' => $session->status->label(),
-            'createdAt' => $session->created_at?->toIso8601String(),
+            ...$session->summary(),
             'canEditSetup' => $session->isOpenForSetup(),
         ];
     }

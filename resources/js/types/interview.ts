@@ -64,3 +64,41 @@ export type InterviewerLine = {
     text: string;
     audioUrl: string | null;
 };
+
+/** Laravel's paginator as Inertia receives it (only the fields we use). */
+export type Paginated<T> = {
+    data: T[];
+    current_page: number;
+    last_page: number;
+    total: number;
+    prev_page_url: string | null;
+    next_page_url: string | null;
+};
+
+/** The interview report (FalaDev.md, section 7). Scores go from 1 to 5. */
+export type InterviewEvaluation = {
+    /** Produced by the fake evaluator: scores do not judge the answers. */
+    isSimulated: boolean;
+    overallScore: number;
+    summary: string;
+    dimensions: Array<{
+        key: string;
+        label: string;
+        score: number;
+        explanation: string;
+    }>;
+    strengths: Array<{ point: string; evidence: string; position: number }>;
+    improvements: Array<{
+        point: string;
+        evidence: string;
+        position: number;
+        action: string;
+    }>;
+    englishFeedback: Array<{
+        original: string;
+        suggestion: string;
+        explanation: string;
+        position: number;
+    }>;
+    nextSteps: string[];
+};

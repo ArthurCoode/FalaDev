@@ -4,6 +4,7 @@ namespace App\Interview;
 
 use App\Enums\InterviewStatus;
 use App\Interview\Contracts\Interviewer;
+use App\Jobs\EvaluateInterview;
 use App\Models\InterviewSession;
 use App\Models\InterviewTurn;
 use App\Services\InterviewUsage;
@@ -60,6 +61,7 @@ class InterviewFlow
             $session->transitionTo(InterviewStatus::Asking);
             $session->started_at = now();
             $session->save();
+            $this->usage->recordInterviewStarted($session);
 
             $this->askNextOrComplete($session, position: 1);
         });
@@ -118,7 +120,8 @@ class InterviewFlow
         DB::transaction(function () use ($session) {
             $session = $this->lock($session);
 
-            if ($session->status === InterviewStatus::Completed) {
+            // Already over (repeated click): it may be completed or evaluated by now.
+            if ($session->completed_at !== null) {
                 return;
             }
 
@@ -154,11 +157,52 @@ class InterviewFlow
         ]);
     }
 
+    /**
+     * A report failed (or an interview finished before reports existed):
+     * generate it again. Repeating the click is harmless.
+     */
+    public function retryEvaluation(InterviewSession $session): void
+    {
+        DB::transaction(function () use ($session) {
+            $session = $this->lock($session);
+
+            if (in_array($session->status, [InterviewStatus::Evaluating, InterviewStatus::ReportReady], true)) {
+                return;
+            }
+
+            $canEvaluate = $session->status === InterviewStatus::FailedRetryable
+                || ($session->status === InterviewStatus::Completed
+                    && $session->turns()->whereNotNull('answered_at')->exists());
+
+            if (! $canEvaluate) {
+                throw ValidationException::withMessages([
+                    'status' => 'Esta entrevista não tem relatório para gerar.',
+                ]);
+            }
+
+            $this->evaluate($session);
+        });
+    }
+
     private function complete(InterviewSession $session): void
     {
         $session->transitionTo(InterviewStatus::Completed);
         $session->completed_at = now();
         $session->save();
+
+        // Without any answer there is nothing to evaluate.
+        if ($session->turns()->whereNotNull('answered_at')->exists()) {
+            $this->evaluate($session);
+        }
+    }
+
+    private function evaluate(InterviewSession $session): void
+    {
+        $session->transitionTo(InterviewStatus::Evaluating);
+        $session->save();
+
+        // Only after the transaction commits, so the job sees the saved answers.
+        EvaluateInterview::dispatch($session)->afterCommit();
     }
 
     private function ensureInProgress(InterviewSession $session): void

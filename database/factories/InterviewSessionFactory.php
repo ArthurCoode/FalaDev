@@ -6,6 +6,7 @@ use App\Enums\InterviewCategory;
 use App\Enums\InterviewDuration;
 use App\Enums\InterviewLevel;
 use App\Enums\InterviewStatus;
+use App\Enums\UsageReason;
 use App\Models\InterviewSession;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -29,6 +30,23 @@ class InterviewSessionFactory extends Factory
             'duration_minutes' => fake()->randomElement(InterviewDuration::cases()),
             'status' => InterviewStatus::Draft,
         ];
+    }
+
+    /**
+     * A started session consumed one unit of the allowance when it started,
+     * just like InterviewFlow::start() records it.
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(function (InterviewSession $session) {
+            if ($session->started_at !== null) {
+                $session->user->usageRecords()->create([
+                    'interview_session_id' => $session->id,
+                    'reason' => UsageReason::InterviewStarted,
+                    'created_at' => $session->started_at,
+                ]);
+            }
+        });
     }
 
     /**

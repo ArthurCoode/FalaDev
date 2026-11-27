@@ -32,6 +32,11 @@ enum InterviewStatus: string
             // Recording, transcribing and reviewing happen in the browser
             // and are not stored (see App\Interview\InterviewFlow).
             self::Asking => [self::Completed],
+            // With at least one answer the report is prepared in the background.
+            self::Completed => [self::Evaluating],
+            self::Evaluating => [self::ReportReady, self::FailedRetryable],
+            // "Tentar novamente" on a failed report.
+            self::FailedRetryable => [self::Evaluating],
             default => [],
         }, true);
     }

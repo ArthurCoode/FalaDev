@@ -134,7 +134,7 @@ test('an empty answer is rejected', function () {
     expect($turn->fresh()->isAnswered())->toBeFalse();
 });
 
-test('a 15-minute interview completes after three questions and their follow-ups', function () {
+test('a 15-minute interview ends after three questions and their follow-ups, then gets its report', function () {
     $session = startedInterview();
 
     foreach (range(1, 6) as $answer) {
@@ -142,7 +142,7 @@ test('a 15-minute interview completes after three questions and their follow-ups
     }
 
     $session->refresh();
-    expect($session->status)->toBe(InterviewStatus::Completed)
+    expect($session->status)->toBe(InterviewStatus::ReportReady)
         ->and($session->completed_at)->not->toBeNull()
         ->and($session->turns()->count())->toBe(6)
         ->and($session->turns()->whereNull('answered_at')->count())->toBe(0);
@@ -155,7 +155,7 @@ test('a 30-minute interview has four main questions', function () {
         answerCurrent($session);
     }
 
-    expect($session->fresh()->status)->toBe(InterviewStatus::Completed)
+    expect($session->fresh()->status)->toBe(InterviewStatus::ReportReady)
         ->and($session->turns()->where('is_follow_up', false)->count())->toBe(4);
 });
 
@@ -166,7 +166,7 @@ test('when time is up the answer in progress still counts, then the interview en
     answerCurrent($session, 'Late but complete answer.');
 
     $session->refresh();
-    expect($session->status)->toBe(InterviewStatus::Completed)
+    expect($session->status)->toBe(InterviewStatus::ReportReady)
         ->and($session->turns()->count())->toBe(1)
         ->and($session->turns()->first()->answer_transcript)->toBe('Late but complete answer.');
 });
@@ -180,7 +180,7 @@ test('ending early keeps the answers already sent', function () {
         ->assertRedirect(route('interviews.show', $session));
 
     $session->refresh();
-    expect($session->status)->toBe(InterviewStatus::Completed)
+    expect($session->status)->toBe(InterviewStatus::ReportReady)
         ->and($session->turns()->whereNotNull('answered_at')->count())->toBe(1);
 });
 

@@ -35,6 +35,7 @@
         <env name="FALADEV_TTS_DRIVER" value="fake"/>
         <env name="FALADEV_STT_DRIVER" value="fake"/>
         <env name="FALADEV_INTERVIEWER_DRIVER" value="fake"/>
+        <env name="FALADEV_EVALUATOR_DRIVER" value="fake"/>
         <env name="INERTIA_SSR_ENABLED" value="false"/>
         <env name="ELEVENLABS_API_KEY" value="test-key"/>
     </php>
