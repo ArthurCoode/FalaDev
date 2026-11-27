@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Speech\Contracts\TextToSpeech;
+use App\Speech\ElevenLabsTextToSpeech;
 use App\Speech\FakeTextToSpeech;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
@@ -21,6 +22,14 @@ class AppServiceProvider extends ServiceProvider
         // Speech providers are swappable through config/faladev.php.
         $this->app->bind(TextToSpeech::class, fn () => match (config('faladev.speech.tts')) {
             'fake' => new FakeTextToSpeech,
+            'elevenlabs' => new ElevenLabsTextToSpeech(
+                apiKey: (string) config('services.elevenlabs.key'),
+                voiceId: config('services.elevenlabs.voice_id'),
+                modelId: config('services.elevenlabs.model_id'),
+                outputFormat: config('services.elevenlabs.output_format'),
+                baseUrl: config('services.elevenlabs.base_url'),
+                timeoutSeconds: config('services.elevenlabs.timeout'),
+            ),
             default => throw new InvalidArgumentException('Unsupported TTS driver: '.config('faladev.speech.tts')),
         });
     }

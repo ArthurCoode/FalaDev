@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    'elevenlabs' => [
+        'key' => env('ELEVENLABS_API_KEY'),
+        'base_url' => env('ELEVENLABS_BASE_URL', 'https://api.elevenlabs.io'),
+        // "Matilda": American English, professional tone.
+        'voice_id' => env('ELEVENLABS_VOICE_ID', 'XrExE9yKIg1WjnnlVkGX'),
+        'model_id' => env('ELEVENLABS_MODEL_ID', 'eleven_v4_turbo'),
+        'output_format' => env('ELEVENLABS_OUTPUT_FORMAT', 'mp3_44100_64'),
+        'timeout' => (int) env('ELEVENLABS_TIMEOUT', 15),
+    ],
+
 ];

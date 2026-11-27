@@ -21,8 +21,8 @@ return [
     | Speech providers
     |--------------------------------------------------------------------------
     |
-    | "fake" plays a short chime instead of real speech; it needs no account
-    | and is meant for development until a provider is chosen.
+    | tts: "elevenlabs" (needs ELEVENLABS_API_KEY, see config/services.php) or
+    | "fake", a short chime that needs no account (development and tests).
     |
     */
 
