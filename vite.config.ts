@@ -12,8 +12,13 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/app.ts'],
             refresh: true,
             fonts: [
-                bunny('Inter', {
-                    weights: [400, 500, 600, 700],
+                bunny('Funnel Sans', {
+                    weights: [400, 500, 600],
+                }),
+                bunny('Funnel Display', {
+                    // 600: headings use font-semibold; without it the
+                    // browser fakes the bold.
+                    weights: [400, 500, 600],
                 }),
             ],
         }),
