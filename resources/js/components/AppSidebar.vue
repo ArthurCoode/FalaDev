@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
-import { ChartColumn, History, LayoutGrid, Mic } from '@lucide/vue';
+import {
+    ChartColumn,
+    GraduationCap,
+    History,
+    LayoutGrid,
+    Mic,
+    RotateCcw,
+} from '@lucide/vue';
 import { computed } from 'vue';
 import AppLogo from '@/components/AppLogo.vue';
 import NavMain from '@/components/NavMain.vue';
@@ -20,41 +27,58 @@ import {
     index as interviewHistory,
 } from '@/routes/interviews';
 import { metrics as pilotMetrics } from '@/routes/pilot';
-import type { NavItem } from '@/types';
+import { index as studyIndex, review as studyReview } from '@/routes/study';
+import type { NavGroup } from '@/types';
 
 const page = usePage();
 
-const baseNavItems: NavItem[] = [
-    {
-        title: 'Início',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-    {
-        title: 'Nova entrevista',
-        href: createInterview(),
-        icon: Mic,
-    },
-    {
-        title: 'Histórico',
-        href: interviewHistory(),
-        icon: History,
-    },
-];
+const navGroups = computed<NavGroup[]>(() => {
+    const groups: NavGroup[] = [
+        {
+            label: 'Geral',
+            items: [{ title: 'Início', href: dashboard(), icon: LayoutGrid }],
+        },
+        {
+            label: 'Entrevistar',
+            items: [
+                {
+                    title: 'Nova entrevista',
+                    href: createInterview(),
+                    icon: Mic,
+                },
+                { title: 'Histórico', href: interviewHistory(), icon: History },
+            ],
+        },
+        {
+            label: 'Estudar',
+            items: [
+                { title: 'Trilha', href: studyIndex(), icon: GraduationCap },
+                {
+                    title: 'Revisão',
+                    href: studyReview(),
+                    icon: RotateCcw,
+                    badge: page.props.study?.reviewsDue ?? 0,
+                },
+            ],
+        },
+    ];
 
-// Only pilot admins (FALADEV_PILOT_ADMINS) see the metrics page.
-const mainNavItems = computed<NavItem[]>(() =>
-    page.props.auth.canViewPilotMetrics
-        ? [
-              ...baseNavItems,
-              {
-                  title: 'Métricas do piloto',
-                  href: pilotMetrics(),
-                  icon: ChartColumn,
-              },
-          ]
-        : baseNavItems,
-);
+    // Only pilot admins (FALADEV_PILOT_ADMINS) see the metrics page.
+    if (page.props.auth.canViewPilotMetrics) {
+        groups.push({
+            label: 'Piloto',
+            items: [
+                {
+                    title: 'Métricas do piloto',
+                    href: pilotMetrics(),
+                    icon: ChartColumn,
+                },
+            ],
+        });
+    }
+
+    return groups;
+});
 </script>
 
 <template>
@@ -72,7 +96,12 @@ const mainNavItems = computed<NavItem[]>(() =>
         </SidebarHeader>
 
         <SidebarContent>
-            <NavMain :items="mainNavItems" />
+            <NavMain
+                v-for="group in navGroups"
+                :key="group.label"
+                :label="group.label"
+                :items="group.items"
+            />
         </SidebarContent>
 
         <SidebarFooter>

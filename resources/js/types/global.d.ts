@@ -20,6 +20,8 @@ declare module '@inertiajs/core' {
             name: string;
             auth: Auth;
             sidebarOpen: boolean;
+            /** Null for guests. */
+            study: { reviewsDue: number } | null;
             [key: string]: unknown;
         };
     }

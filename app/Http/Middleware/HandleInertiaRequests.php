@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Study\StudyTrack;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Middleware;
@@ -44,6 +45,10 @@ class HandleInertiaRequests extends Middleware
                 // Shows the "Métricas do piloto" menu item.
                 'canViewPilotMetrics' => $request->user() !== null && Gate::allows('view-pilot-metrics'),
             ],
+            // Badge on the "Revisão" menu item.
+            'study' => fn () => $request->user() ? [
+                'reviewsDue' => app(StudyTrack::class)->reviewsDue($request->user()),
+            ] : null,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

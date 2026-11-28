@@ -13,6 +13,7 @@ use App\Speech\ElevenLabsTextToSpeech;
 use App\Speech\FakeSpeechToText;
 use App\Speech\FakeTextToSpeech;
 use App\Speech\PrerecordedPhrases;
+use App\Study\Curriculum;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Middleware\TrustProxies;
 use Illuminate\Support\Facades\Date;
@@ -57,6 +58,9 @@ class AppServiceProvider extends ServiceProvider
             'fake' => new FakeEvaluator,
             default => throw new InvalidArgumentException('Unsupported evaluator driver: '.config('faladev.evaluation.evaluator')),
         });
+
+        // Loaded and checked once per request; see resources/study/curriculum.php.
+        $this->app->singleton(Curriculum::class, fn () => Curriculum::load(resource_path('study/curriculum.php')));
 
         $this->app->bind(PrerecordedPhrases::class, fn () => new PrerecordedPhrases(
             directory: public_path(config('faladev.speech.prerecorded_path')),

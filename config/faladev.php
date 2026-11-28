@@ -89,4 +89,24 @@ return [
         ))),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Study track
+    |--------------------------------------------------------------------------
+    |
+    | timezone: where a "study day" starts and ends, for the streak and the
+    | reviews due today. The audience is in Brazil.
+    | review_batch: how many due phrases one review session asks at most.
+    | max_freezes: streak protections a user can hold; one is earned every
+    | freeze_every_days days in a row and covers one missed day.
+    |
+    */
+
+    'study' => [
+        'timezone' => env('FALADEV_STUDY_TIMEZONE', 'America/Sao_Paulo'),
+        'review_batch' => 12,
+        'max_freezes' => 2,
+        'freeze_every_days' => 7,
+    ],
+
 ];

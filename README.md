@@ -54,6 +54,11 @@ Para a segunda opção, crie o banco uma vez:
 - **Histórico e exclusão:** `/interviews` lista todas as sessões do usuário (15 por página). Na página da sessão, "Apagar entrevista" remove a sessão, as perguntas, as respostas e o relatório, depois de confirmação.
 - **Relatório (`app/Evaluation`):** ao terminar uma entrevista com pelo menos uma resposta, a sessão vai para `evaluating` e o job `EvaluateInterview` roda na fila. Sucesso leva a `report_ready`; qualquer falha leva a `failed_retryable`, com a transcrição preservada e o botão "Tentar novamente". A página consulta o servidor a cada 3 s enquanto o relatório é preparado. `Rubric` define as dimensões (a técnica muda com a categoria) e a escala de 1 a 5. `EvaluationResult` rejeita notas fora da escala. O `FakeEvaluator` dá nota fixa 3, cita trechos das respostas e deixa claro, no relatório e na tela, que é simulado.
 - **Estados da sessão:** `InterviewStatus::canTransitionTo()` define as transições permitidas e `InterviewSession::transitionTo()` é o único jeito de mudar o status. Por enquanto: `draft → ready` (testes de áudio concluídos), `ready → draft` (configuração alterada), `ready → asking` (entrevista iniciada), `asking → completed` (última pergunta respondida, tempo esgotado ou encerramento pelo usuário), `completed → evaluating` (há respostas), `evaluating → report_ready | failed_retryable` e `failed_retryable → evaluating` (nova tentativa). Gravar, transcrever e revisar acontecem no navegador e não viram estado no servidor, porque nada é salvo até o envio.
+- **Trilha de estudos (`app/Study`, `/study`):** lições curtas de inglês para entrevistas, em unidades. O conteúdo fica em `resources/study/curriculum.php` (comentário no topo explica as regras) e é validado ao carregar e por `tests/Unit/Study/CurriculumTest.php`. Tipos de exercício: escolha, completar a lacuna e montar a frase. As lições de uma unidade abrem em ordem.
+  - **Correção:** a página corrige na hora para dar retorno; ao terminar, o servidor corrige de novo as respostas de primeira tentativa e só esse resultado conta. Um exercício errado volta no fim da lição até ser acertado. Terminar é idempotente (`attempt` por tentativa) e trava a linha de progresso do usuário.
+  - **Revisão espaçada (`ReviewSchedule`):** frase errada de primeira volta em 1 dia; cada acerto na revisão espera mais (1, 3, 7, 14, 30 dias) e o acerto na última caixa a domina. Errar na revisão volta ao início.
+  - **Sequência (`StudyProgress`):** uma lição ou revisão por dia, contando o dia no fuso `FALADEV_STUDY_TIMEZONE` (padrão `America/Sao_Paulo`). A cada 7 dias seguidos o usuário ganha uma proteção (máximo 2), que cobre um dia sem estudo.
+  - **XP:** 2 por acerto de primeira e 5 de bônus quando acerta tudo.
 
 ## Voz (TTS/STT)
 
@@ -107,6 +112,12 @@ Só as contas listadas em `FALADEV_PILOT_ADMINS` (e-mails separados por vírgula
 3. Abra no celular o endereço `https://….trycloudflare.com` que aparece no terminal.
 
 Enquanto o túnel estiver aberto, o ambiente de dev fica acessível pela internet. Use só a conta de dev e feche o túnel ao terminar.
+
+## Landing page e SEO
+
+- `/` é Blade (`resources/views/landing.blade.php`), entregue como HTML pelo servidor para os buscadores; `/privacidade` também. Usam o kit de design copiado em `public/assets` (CSS e JS puros, sem o Vite). Não edite os arquivos de `public/assets`: são cópias do kit.
+- SEO: título e descrição próprios, Open Graph com `public/share.jpg`, dados estruturados (WebSite, SoftwareApplication e FAQPage), `/sitemap.xml` e `/robots.txt` gerados por rota. O `canonical` só aparece quando `APP_URL` tem o domínio real.
+- O app logado (Inertia) usa a mesma paleta pelos tokens de `resources/css/app.css`; o tema escuro é o padrão.
 
 ## Padrões de interface
 

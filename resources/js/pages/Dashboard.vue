@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { Head, Link, usePage } from '@inertiajs/vue3';
-import { History, Mic, Play } from '@lucide/vue';
+import {
+    ArrowRight,
+    Flame,
+    GraduationCap,
+    History,
+    Mic,
+    Play,
+    RotateCcw,
+} from '@lucide/vue';
 import { computed } from 'vue';
 import InterviewSessionList from '@/components/interview/InterviewSessionList.vue';
 import PageHeader from '@/components/PageHeader.vue';
@@ -14,7 +22,14 @@ import {
 } from '@/components/ui/card';
 import { dashboard } from '@/routes';
 import { create, index, show } from '@/routes/interviews';
-import type { InterviewSessionSummary, UsageSummary } from '@/types';
+import { index as studyIndex, review as studyReview } from '@/routes/study';
+import { show as showLesson } from '@/routes/study/lessons';
+import type {
+    InterviewSessionSummary,
+    StudyLessonLink,
+    StudyStats,
+    UsageSummary,
+} from '@/types';
 
 defineOptions({
     layout: {
@@ -37,7 +52,12 @@ const props = defineProps<{
     } | null;
     recentSessions: InterviewSessionSummary[];
     usage: UsageSummary;
+    study: StudyStats & { nextLesson: StudyLessonLink | null };
 }>();
+
+const streakDays = computed(() =>
+    props.study.streak === 1 ? '1 dia' : `${props.study.streak} dias`,
+);
 
 const page = usePage();
 const firstName = computed(() => page.props.auth.user.name.split(' ')[0]);
@@ -174,6 +194,78 @@ const usagePercent = computed(() =>
                 </CardContent>
             </Card>
         </div>
+
+        <Card data-test="dashboard-study">
+            <div
+                class="flex flex-col gap-4 px-6 sm:flex-row sm:items-center sm:justify-between"
+            >
+                <div class="flex items-center gap-4">
+                    <div
+                        class="flex size-12 shrink-0 items-center justify-center rounded-full"
+                        :class="
+                            study.studiedToday
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-muted text-muted-foreground'
+                        "
+                    >
+                        <Flame class="size-6" aria-hidden="true" />
+                    </div>
+                    <div>
+                        <p class="font-semibold">
+                            <template v-if="study.streak > 0">
+                                Sequência de {{ streakDays }}
+                            </template>
+                            <template v-else>Estudo diário</template>
+                        </p>
+                        <p class="text-sm text-muted-foreground">
+                            <template v-if="study.studiedToday">
+                                Meta de hoje cumprida.
+                            </template>
+                            <template v-else-if="study.reviewsDue > 0">
+                                {{
+                                    study.reviewsDue === 1
+                                        ? '1 frase para revisar hoje.'
+                                        : `${study.reviewsDue} frases para revisar hoje.`
+                                }}
+                            </template>
+                            <template v-else>
+                                Uma lição de 3 minutos com o inglês das
+                                entrevistas.
+                            </template>
+                        </p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <Button
+                        v-if="study.reviewsDue > 0"
+                        as-child
+                        data-test="dashboard-review"
+                    >
+                        <Link :href="studyReview()">
+                            <RotateCcw />
+                            Revisar
+                        </Link>
+                    </Button>
+                    <Button
+                        v-if="study.nextLesson"
+                        :variant="study.reviewsDue > 0 ? 'outline' : 'default'"
+                        as-child
+                        data-test="dashboard-next-lesson"
+                    >
+                        <Link :href="showLesson(study.nextLesson.slug)">
+                            <GraduationCap />
+                            {{ study.nextLesson.title }}
+                        </Link>
+                    </Button>
+                    <Button variant="ghost" as-child>
+                        <Link :href="studyIndex()">
+                            Ver trilha
+                            <ArrowRight />
+                        </Link>
+                    </Button>
+                </div>
+            </div>
+        </Card>
 
         <section aria-labelledby="recent-sessions-title" class="space-y-3">
             <h2

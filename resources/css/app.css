@@ -9,8 +9,9 @@
 
 @theme inline {
     --font-sans:
-        'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
-        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+        'Funnel Sans', ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
 
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
@@ -59,6 +60,9 @@
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
 
+    --font-display:
+        'Funnel Display', 'Funnel Sans', ui-sans-serif, system-ui, sans-serif;
+
     /* FalaDev brand extras (cursor/skills/FalaDev.md, section 2). */
     --color-primary-hover: var(--primary-hover);
     --color-voice: var(--voice);
@@ -76,103 +80,104 @@
 }
 
 :root {
-    --background: #f8fafc;
-    --foreground: #0f172a;
-    --card: #ffffff;
-    --card-foreground: #0f172a;
-    --popover: #ffffff;
-    --popover-foreground: #0f172a;
-    --primary: #4f46e5;
-    --primary-foreground: #ffffff;
-    --primary-hover: #4338ca;
-    --secondary: #eef2ff;
-    --secondary-foreground: #4338ca;
-    --muted: #f1f5f9;
-    --muted-foreground: #475569;
-    --accent: #eef2ff;
-    --accent-foreground: #0f172a;
-    --destructive: #ef4444;
-    --destructive-foreground: #ef4444;
-    --destructive-soft: #fef2f2;
-    --border: #e2e8f0;
-    --input: #e2e8f0;
-    --ring: #4f46e5;
-    /* Voice/AI cyan is for indicators and icons; it is too light for small text on white. */
-    --voice: #06b6d4;
-    --voice-hover: #0891b2;
-    --highlight: #f59e0b;
-    --success: #10b981;
-    --success-soft: #ecfdf5;
-    --warning: #f59e0b;
-    --warning-soft: #fffbeb;
-    --info: #06b6d4;
-    --info-soft: #ecfeff;
-    --code: #0f1021;
-    --code-foreground: #f8fafc;
-    --chart-1: oklch(0.646 0.222 41.116);
-    --chart-2: oklch(0.6 0.118 184.704);
-    --chart-3: oklch(0.398 0.07 227.392);
-    --chart-4: oklch(0.828 0.189 84.429);
-    --chart-5: oklch(0.769 0.188 70.08);
-    --radius: 0.625rem;
-    --sidebar: #ffffff;
-    --sidebar-foreground: #0f172a;
-    --sidebar-primary: #4f46e5;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #eef2ff;
-    --sidebar-accent-foreground: #4338ca;
-    --sidebar-border: #e2e8f0;
-    --sidebar-ring: #4f46e5;
+    /* Light mode: off-white ground, graphite ink. Lime (#C8F136) is too light for text or
+       icons on off-white (1.1:1), so here it only fills highlights; actions are graphite. */
+    --background: #f4f4f0;
+    --foreground: #111111;
+    --card: #fbfbf8;
+    --card-foreground: #111111;
+    --popover: #fbfbf8;
+    --popover-foreground: #111111;
+    --primary: #111111;
+    --primary-foreground: #f4f4f0;
+    --primary-hover: #2a2a2a;
+    --secondary: #e8e8e3;
+    --secondary-foreground: #111111;
+    --muted: #e8e8e3;
+    --muted-foreground: #55554f;
+    --accent: #e8e8e3;
+    --accent-foreground: #111111;
+    --destructive: #c62828;
+    --destructive-foreground: #c62828;
+    --destructive-soft: #fbeaea;
+    --border: #dcdcd5;
+    --input: #dcdcd5;
+    --ring: #111111;
+    /* "voice": recording, audio and AI indicators */
+    --voice: #111111;
+    --voice-hover: #2a2a2a;
+    --highlight: #c8f136;
+    --success: #2e7d32;
+    --success-soft: #e8f3e8;
+    --warning: #a15c00;
+    --warning-soft: #fbf0e0;
+    --info: #111111;
+    --info-soft: #e8e8e3;
+    --code: #111111;
+    --code-foreground: #f4f4f0;
+    --chart-1: #111111;
+    --chart-2: #c8f136;
+    --chart-3: #6b6b65;
+    --chart-4: #a3a39c;
+    --chart-5: #2a2a2a;
+    --radius: 0.75rem;
+    --sidebar: #fbfbf8;
+    --sidebar-foreground: #111111;
+    --sidebar-primary: #111111;
+    --sidebar-primary-foreground: #f4f4f0;
+    --sidebar-accent: #e8e8e3;
+    --sidebar-accent-foreground: #111111;
+    --sidebar-border: #dcdcd5;
+    --sidebar-ring: #111111;
 }
 
-/* Dark mode: the brand defines the dark surface (#0F1021) and the primary.
-   Supporting surfaces/borders are navy tints derived from it (not in the brand doc). */
+/* Dark mode, the brand's default: graphite ground, off-white ink, lime actions with graphite labels. */
 .dark {
-    --background: #0f1021;
-    --foreground: #f8fafc;
-    --card: #0f1021;
-    --card-foreground: #f8fafc;
-    --popover: #0f1021;
-    --popover-foreground: #f8fafc;
-    --primary: #4f46e5;
-    --primary-foreground: #f8fafc;
-    --primary-hover: #4338ca;
-    --destructive-soft: oklch(0.258 0.092 26.042);
-    --voice: #06b6d4;
-    --voice-hover: #0891b2;
-    --highlight: #f59e0b;
-    --success: #10b981;
-    --success-soft: oklch(0.262 0.051 172.552);
-    --warning: #f59e0b;
-    --warning-soft: oklch(0.279 0.077 45.635);
-    --info: #06b6d4;
-    --info-soft: oklch(0.302 0.056 229.695);
-    --code: #0f1021;
-    --code-foreground: #f8fafc;
-    --secondary: #1e1b4b;
-    --secondary-foreground: #c7d2fe;
-    --muted: #1b1d33;
-    --muted-foreground: #94a3b8;
-    --accent: #1e2038;
-    --accent-foreground: #f8fafc;
-    --destructive: oklch(0.396 0.141 25.723);
-    --destructive-foreground: oklch(0.637 0.237 25.331);
-    --border: #262842;
-    --input: #262842;
-    --ring: #4f46e5;
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: #0a0b18;
-    --sidebar-foreground: #f8fafc;
-    --sidebar-primary: #4f46e5;
-    --sidebar-primary-foreground: #ffffff;
-    --sidebar-accent: #1e2038;
-    --sidebar-accent-foreground: #f8fafc;
-    --sidebar-border: #262842;
-    --sidebar-ring: #4f46e5;
+    --background: #111111;
+    --foreground: #f4f4f0;
+    --card: #181818;
+    --card-foreground: #f4f4f0;
+    --popover: #181818;
+    --popover-foreground: #f4f4f0;
+    --primary: #c8f136;
+    --primary-foreground: #111111;
+    --primary-hover: #b4dc23;
+    --secondary: #222222;
+    --secondary-foreground: #f4f4f0;
+    --muted: #1f1f1f;
+    --muted-foreground: #a3a39c;
+    --accent: #242424;
+    --accent-foreground: #f4f4f0;
+    --destructive: #7f1d1d;
+    --destructive-foreground: #f87171;
+    --destructive-soft: #2a1515;
+    --border: #2c2c2c;
+    --input: #2c2c2c;
+    --ring: #c8f136;
+    --voice: #c8f136;
+    --voice-hover: #b4dc23;
+    --highlight: #c8f136;
+    --success: #4ade80;
+    --success-soft: #13261a;
+    --warning: #fbbf24;
+    --warning-soft: #2a2110;
+    --info: #c8f136;
+    --info-soft: #1f2410;
+    --code: #0b0b0b;
+    --code-foreground: #f4f4f0;
+    --chart-1: #c8f136;
+    --chart-2: #f4f4f0;
+    --chart-3: #a3a39c;
+    --chart-4: #6b6b65;
+    --chart-5: #3a3a3a;
+    --sidebar: #0d0d0d;
+    --sidebar-foreground: #f4f4f0;
+    --sidebar-primary: #c8f136;
+    --sidebar-primary-foreground: #111111;
+    --sidebar-accent: #222222;
+    --sidebar-accent-foreground: #f4f4f0;
+    --sidebar-border: #262626;
+    --sidebar-ring: #c8f136;
 }
 
 @layer base {
@@ -180,7 +185,52 @@
         @apply border-border outline-ring/50;
     }
 
+    h1,
+    h2 {
+        font-family: var(--font-display);
+        letter-spacing: -0.02em;
+    }
+
     body {
         @apply bg-background text-foreground;
+    }
+}
+
+/* Study track feedback: a short shake on a wrong answer, a pop on a right one.
+   Used through motion-safe:, so reduced motion turns them off. */
+@theme {
+    --animate-shake: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+    --animate-pop: pop 0.3s ease-out;
+
+    @keyframes shake {
+        10%,
+        90% {
+            transform: translateX(-1px);
+        }
+        20%,
+        80% {
+            transform: translateX(2px);
+        }
+        30%,
+        50%,
+        70% {
+            transform: translateX(-4px);
+        }
+        40%,
+        60% {
+            transform: translateX(4px);
+        }
+    }
+
+    @keyframes pop {
+        0% {
+            transform: scale(1);
+        }
+        50% {
+            transform: scale(1.03);
+        }
+        100% {
+            transform: scale(1);
+        }
     }
 }

@@ -5,9 +5,26 @@ use App\Http\Controllers\InterviewSessionController;
 use App\Http\Controllers\InterviewTurnController;
 use App\Http\Controllers\PilotEventController;
 use App\Http\Controllers\PilotMetricsController;
+use App\Http\Controllers\StudyController;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'Welcome')->name('home');
+// Public pages are plain Blade (server-rendered HTML for search engines).
+Route::view('/', 'landing')->name('home');
+Route::view('privacidade', 'privacy')->name('privacy');
+Route::get('sitemap.xml', fn () => response()
+    ->view('sitemap', ['urls' => [route('home'), route('privacy')]])
+    ->header('Content-Type', 'application/xml'))->name('sitemap');
+Route::get('robots.txt', fn () => response(implode('
+', [
+    'User-agent: *',
+    'Disallow: /dashboard',
+    'Disallow: /interviews',
+    'Disallow: /settings',
+    'Disallow: /pilot',
+    'Disallow: /study',
+    '',
+    'Sitemap: '.route('sitemap'),
+]))->header('Content-Type', 'text/plain'))->name('robots');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
@@ -38,6 +55,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('interviews/{interviewSession}/finish', [InterviewSessionController::class, 'finish'])
         ->whereNumber('interviewSession')
         ->name('interviews.finish');
+
+    // Study track: lessons, the review of missed phrases and the streak.
+    Route::get('study', [StudyController::class, 'index'])->name('study.index');
+    Route::get('study/review', [StudyController::class, 'review'])->name('study.review');
+    Route::post('study/review', [StudyController::class, 'completeReview'])
+        ->middleware('throttle:30,1')
+        ->name('study.review.complete');
+    Route::get('study/lessons/{lesson}', [StudyController::class, 'lesson'])
+        ->where('lesson', '[a-z0-9-]+')
+        ->name('study.lessons.show');
+    Route::post('study/lessons/{lesson}', [StudyController::class, 'completeLesson'])
+        ->where('lesson', '[a-z0-9-]+')
+        ->middleware('throttle:30,1')
+        ->name('study.lessons.complete');
 
     // Pilot (FalaDev.md, section 12): technical events and the metrics page.
     Route::post('pilot/events', PilotEventController::class)
