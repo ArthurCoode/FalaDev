@@ -234,3 +234,53 @@
         }
     }
 }
+
+/* Code editor syntax colors (CodeMirror's classHighlighter), per theme. */
+.cm-editor {
+    --tok-keyword: #3d6600;
+    --tok-string: #8a4b00;
+    --tok-number: #a8361a;
+    --tok-comment: #6b6b68;
+    --tok-definition: #111111;
+    --tok-property: #1f4f8a;
+    --tok-punctuation: #4a4a47;
+}
+
+.dark .cm-editor {
+    --tok-keyword: #c8f136;
+    --tok-string: #f2c97d;
+    --tok-number: #f7936f;
+    --tok-comment: #8a8a86;
+    --tok-definition: #f4f4f0;
+    --tok-property: #9cc8ff;
+    --tok-punctuation: #b5b5b0;
+}
+
+.cm-editor .tok-keyword,
+.cm-editor .tok-bool,
+.cm-editor .tok-null {
+    color: var(--tok-keyword);
+}
+.cm-editor .tok-string,
+.cm-editor .tok-string2 {
+    color: var(--tok-string);
+}
+.cm-editor .tok-number {
+    color: var(--tok-number);
+}
+.cm-editor .tok-comment {
+    color: var(--tok-comment);
+    font-style: italic;
+}
+.cm-editor .tok-variableName.tok-definition,
+.cm-editor .tok-function {
+    color: var(--tok-definition);
+    font-weight: 600;
+}
+.cm-editor .tok-propertyName {
+    color: var(--tok-property);
+}
+.cm-editor .tok-punctuation,
+.cm-editor .tok-operator {
+    color: var(--tok-punctuation);
+}

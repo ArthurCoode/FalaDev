@@ -3,3 +3,4 @@ export * from './navigation';
 export * from './ui';
 export * from './interview';
 export * from './study';
+export * from './challenge';

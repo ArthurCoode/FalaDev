@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { Link, usePage } from '@inertiajs/vue3';
 import {
+    BookOpen,
     ChartColumn,
+    Code,
     GraduationCap,
     History,
     LayoutGrid,
@@ -21,7 +23,8 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { dashboard } from '@/routes';
+import { dashboard, tutorial } from '@/routes';
+import { index as challengesIndex } from '@/routes/challenges';
 import {
     create as createInterview,
     index as interviewHistory,
@@ -36,7 +39,19 @@ const navGroups = computed<NavGroup[]>(() => {
     const groups: NavGroup[] = [
         {
             label: 'Geral',
-            items: [{ title: 'Início', href: dashboard(), icon: LayoutGrid }],
+            items: [
+                { title: 'Início', href: dashboard(), icon: LayoutGrid },
+                // "Não exibir novamente" on the tutorial takes it out.
+                ...(page.props.auth.user.tutorial_dismissed_at
+                    ? []
+                    : [
+                          {
+                              title: 'Tutorial',
+                              href: tutorial(),
+                              icon: BookOpen,
+                          },
+                      ]),
+            ],
         },
         {
             label: 'Entrevistar',
@@ -59,6 +74,7 @@ const navGroups = computed<NavGroup[]>(() => {
                     icon: RotateCcw,
                     badge: page.props.study?.reviewsDue ?? 0,
                 },
+                { title: 'Desafios', href: challengesIndex(), icon: Code },
             ],
         },
     ];

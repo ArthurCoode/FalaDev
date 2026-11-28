@@ -109,4 +109,33 @@ return [
         'freeze_every_days' => 7,
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Code challenges
+    |--------------------------------------------------------------------------
+    |
+    | The user's code runs in a Docker container per run: no network, no
+    | write access outside a small /tmp, limited memory, CPU and processes,
+    | as an unprivileged user. Build the images with
+    | "php artisan challenges:runners --build" (docker/runners).
+    |
+    | runner: "docker", or "disabled" to turn running off.
+    | time_limit: seconds a run may take, compiling included.
+    | max_concurrent: runs at the same time on this server; more wait a bit
+    | and then get "busy".
+    |
+    */
+
+    'challenges' => [
+        'runner' => env('FALADEV_CODE_RUNNER', 'docker'),
+        'docker_binary' => env('FALADEV_DOCKER_BINARY', 'docker'),
+        'image_prefix' => env('FALADEV_RUNNER_IMAGE_PREFIX', 'faladev-runner-'),
+        'image_tag' => '1',
+        'time_limit' => (int) env('FALADEV_CODE_TIME_LIMIT', 10),
+        'memory' => env('FALADEV_CODE_MEMORY', '512m'),
+        'cpus' => env('FALADEV_CODE_CPUS', '1'),
+        'max_concurrent' => (int) env('FALADEV_CODE_MAX_CONCURRENT', 4),
+        'max_output_bytes' => 256 * 1024,
+    ],
+
 ];

@@ -2,13 +2,16 @@
 
 namespace App\Study;
 
+use App\Challenges\Challenge;
 use App\Enums\StudySessionKind;
+use App\Models\ChallengeSolution;
 use App\Models\StudyCard;
 use App\Models\StudyProgress;
 use App\Models\StudySession;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -27,6 +30,9 @@ final class StudyRecorder
 
     /** Extra XP when every answer was right on the first try. */
     public const XP_PERFECT_BONUS = 5;
+
+    /** XP for solving a code challenge the first time. */
+    public const XP_CHALLENGE = 10;
 
     public function __construct(private readonly Curriculum $curriculum) {}
 
@@ -132,7 +138,46 @@ final class StudyRecorder
     }
 
     /**
-     * @param  callable(CarbonImmutable): array{correct: int, total: int, sentToReview: int, mastered: int}  $grade
+     * Records a passing run of a code challenge: keeps the code, and counts
+     * the study day. Only the first solve earns XP. The tests run in the
+     * browser, so this trusts the page's report.
+     *
+     * @return array<string, mixed>
+     */
+    public function solveChallenge(User $user, Challenge $challenge, string $code): array
+    {
+        return $this->record($user, (string) Str::uuid(), StudySessionKind::Challenge, $challenge->slug, function () use ($user, $challenge, $code): array {
+            $solution = ChallengeSolution::query()
+                ->where('user_id', $user->id)
+                ->where('challenge_slug', $challenge->slug)
+                ->first();
+            $first = $solution === null;
+
+            if ($first) {
+                $solution = new ChallengeSolution([
+                    'challenge_slug' => $challenge->slug,
+                    'first_solved_at' => CarbonImmutable::now(),
+                ]);
+                $solution->user()->associate($user);
+            }
+
+            $solution->code = $code;
+            $solution->last_solved_at = CarbonImmutable::now();
+            $solution->save();
+
+            return [
+                'correct' => 1,
+                'total' => 1,
+                'sentToReview' => 0,
+                'mastered' => 0,
+                'firstSolve' => $first,
+                'xp' => $first ? self::XP_CHALLENGE : 0,
+            ];
+        });
+    }
+
+    /**
+     * @param  callable(CarbonImmutable): array{correct: int, total: int, sentToReview: int, mastered: int, xp?: int}  $grade
      * @return array<string, mixed>
      */
     private function record(User $user, string $attemptId, StudySessionKind $kind, ?string $lessonSlug, callable $grade): array
@@ -151,7 +196,7 @@ final class StudyRecorder
 
             $today = StudyClock::today();
             $result = $grade($today);
-            $xp = $result['correct'] * self::XP_PER_CORRECT
+            $xp = $result['xp'] ?? $result['correct'] * self::XP_PER_CORRECT
                 + ($result['total'] > 0 && $result['correct'] === $result['total'] ? self::XP_PERFECT_BONUS : 0);
 
             $streak = $progress->recordStudyDay($today);

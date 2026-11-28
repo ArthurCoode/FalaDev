@@ -1,11 +1,13 @@
 <?php
 
+use App\Http\Controllers\ChallengeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InterviewSessionController;
 use App\Http\Controllers\InterviewTurnController;
 use App\Http\Controllers\PilotEventController;
 use App\Http\Controllers\PilotMetricsController;
 use App\Http\Controllers\StudyController;
+use App\Http\Controllers\TutorialController;
 use Illuminate\Support\Facades\Route;
 
 // Public pages are plain Blade (server-rendered HTML for search engines).
@@ -22,12 +24,17 @@ Route::get('robots.txt', fn () => response(implode('
     'Disallow: /settings',
     'Disallow: /pilot',
     'Disallow: /study',
+    'Disallow: /challenges',
+    'Disallow: /tutorial',
     '',
     'Sitemap: '.route('sitemap'),
 ]))->header('Content-Type', 'text/plain'))->name('robots');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+    Route::inertia('tutorial', 'Tutorial')->name('tutorial');
+    Route::post('tutorial/dismiss', [TutorialController::class, 'dismiss'])->name('tutorial.dismiss');
+    Route::post('tutorial/restore', [TutorialController::class, 'restore'])->name('tutorial.restore');
 
     Route::get('interviews', [InterviewSessionController::class, 'index'])->name('interviews.index');
     Route::get('interviews/create', [InterviewSessionController::class, 'create'])->name('interviews.create');
@@ -69,6 +76,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->where('lesson', '[a-z0-9-]+')
         ->middleware('throttle:30,1')
         ->name('study.lessons.complete');
+
+    // Code challenges: problems in English, six per language. Each run
+    // starts a container on the server, so it is rate limited.
+    Route::get('challenges', [ChallengeController::class, 'index'])->name('challenges.index');
+    Route::get('challenges/{challenge}', [ChallengeController::class, 'show'])
+        ->where('challenge', '[a-z0-9-]+')
+        ->name('challenges.show');
+    Route::post('challenges/{challenge}/run', [ChallengeController::class, 'run'])
+        ->where('challenge', '[a-z0-9-]+')
+        ->middleware('throttle:20,1')
+        ->name('challenges.run');
 
     // Pilot (FalaDev.md, section 12): technical events and the metrics page.
     Route::post('pilot/events', PilotEventController::class)

@@ -343,7 +343,7 @@ test('the streak counts study days in the configured time zone', function () {
         ->postJson(route('study.lessons.complete', $lesson->slug), lessonPayload($lesson))
         ->assertJson(['streak' => 2]);
 
-    expect(StudySession::where('user_id', $user->id)->pluck('study_on')->map->toDateString()->all())
+    expect(StudySession::where('user_id', $user->id)->orderBy('id')->pluck('study_on')->map->toDateString()->all())
         ->toBe(['2026-03-10', '2026-03-11']);
 });
 

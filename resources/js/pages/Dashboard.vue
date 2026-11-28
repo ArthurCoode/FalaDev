@@ -2,6 +2,7 @@
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import {
     ArrowRight,
+    BookOpen,
     Flame,
     GraduationCap,
     History,
@@ -20,7 +21,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
-import { dashboard } from '@/routes';
+import { dashboard, tutorial } from '@/routes';
 import { create, index, show } from '@/routes/interviews';
 import { index as studyIndex, review as studyReview } from '@/routes/study';
 import { show as showLesson } from '@/routes/study/lessons';
@@ -77,6 +78,37 @@ const usagePercent = computed(() =>
             :title="`Olá, ${firstName}`"
             description="Pratique entrevistas técnicas em inglês, por voz e com IA."
         />
+
+        <Link
+            v-if="
+                recentSessions.length === 0 &&
+                study.totalXp === 0 &&
+                !page.props.auth.user.tutorial_dismissed_at
+            "
+            :href="tutorial()"
+            class="group flex items-center gap-4 rounded-xl border-2 border-primary bg-card p-4 transition-transform hover:-translate-y-0.5 focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+            data-test="dashboard-tutorial"
+        >
+            <span
+                class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground"
+                aria-hidden="true"
+            >
+                <BookOpen class="size-5" />
+            </span>
+            <span class="flex-1">
+                <span class="block font-semibold"
+                    >Novo por aqui? Comece pelo tutorial</span
+                >
+                <span class="block text-sm text-muted-foreground">
+                    Como funciona o FalaDev e o inglês mínimo para as
+                    entrevistas, em 5 minutos.
+                </span>
+            </span>
+            <ArrowRight
+                class="size-5 shrink-0 transition-transform group-hover:translate-x-0.5"
+                aria-hidden="true"
+            />
+        </Link>
 
         <div class="grid gap-4 md:grid-cols-3">
             <Card
